@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Body of Work</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap');
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #f0f1f4;
+      --fg: #1a1a1d;
+      --muted: #7e808a;
+      --accent: #8e909a;
+      --glass-bg: rgba(0,0,0,0.02);
+      --glass-border: rgba(0,0,0,0.05);
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: #d0d0d0 transparent;
+    }
+
+    body {
+      background: transparent;
+      color: var(--fg);
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      overflow-x: hidden;
+      cursor: none;
+    }
+
+    #bgCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .cursor {
+      position: fixed;
+      width: 14px;
+      height: 14px;
+      border: 1px solid rgba(26,26,26,0.3);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 10000;
+      transform: translate(-50%, -50%);
+      transition: width 0.3s, height 0.3s, border-color 0.3s, background 0.3s;
+    }
+
+    .cursor.hover {
+      width: 44px;
+      height: 44px;
+      background: rgba(26,26,26,0.03);
+      border-color: rgba(26,26,26,0.12);
+    }
+
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 32px 48px;
+      transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    nav.scrolled {
+      padding: 18px 48px;
+      background: rgba(240,241,244,0.65);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .nav-logo {
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--fg);
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 36px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .nav-links a {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      cursor: none;
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      position: relative;
+      transition: color 0.3s;
+    }
+
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 1px;
+      background: var(--fg);
+      transition: width 0.3s;
+    }
+
+    .nav-links a:hover { color: var(--fg); }
+    .nav-links a:hover::after { width: 100%; }
+
+    .nav-location {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-location .dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+
+    .scroll-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0,0,0,0.12), transparent);
+      z-index: 1001;
+      transition: width 0.1s linear;
+    }
+
+    .hero-container {
+      height: 200vh;
+      position: relative;
+    }
+
+    .hero {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      max-width: 860px;
+    }
+
+    .hero-title {
+      font-weight: 300;
+      font-size: clamp(42px, 6vw, 88px);
+      line-height: 1.06;
+      letter-spacing: -0.03em;
+      color: var(--fg);
+    }
+
+    .hero-title em {
+      font-style: italic;
+      font-weight: 300;
+      color: var(--accent);
+    }
+
+    .section {
+      position: relative;
+      min-height: 100vh;
+      width: 100vw;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: transparent;
+    }
+
+    .section-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .section-bg .parallax-layer {
+      position: absolute;
+      inset: -20%;
+      background-size: cover;
+      background-position: center;
+      will-change: transform;
+    }
+
+    .section-content {
+      position: relative;
+      z-index: 2;
+      max-width: 580px;
+      padding: 48px;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(50px);
+      transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .section-content.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .section-number {
+      font-size: 110px;
+      font-weight: 300;
+      color: rgba(26,26,26,0.035);
+      line-height: 1;
+      margin-bottom: -16px;
+      letter-spacing: -0.04em;
+    }
+
+    .glass-tag {
+      display: inline-block;
+      padding: 5px 14px;
+      background: rgba(255,255,255,0.45);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(0,0,0,0.05);
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 22px;
+      font-weight: 400;
+    }
+
+    .section-title {
+      font-size: clamp(24px, 2.8vw, 40px);
+      font-weight: 300;
+      line-height: 1.2;
+      margin-bottom: 18px;
+      letter-spacing: -0.025em;
+      color: var(--fg);
+    }
+
+    .section-desc {
+      font-size: 15px;
+      line-height: 1.85;
+      color: var(--muted);
+      letter-spacing: 0.01em;
+      font-weight: 400;
+    }
+
+    .section-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 32px;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--fg);
+      text-decoration: none;
+      cursor: none;
+      transition: gap 0.3s;
+      font-weight: 400;
+    }
+
+    .section-link:hover { gap: 18px; }
+
+    .section-link .arrow {
+      width: 22px;
+      height: 1px;
+      background: var(--fg);
+      position: relative;
+      transition: width 0.3s;
+    }
+
+    .section-link:hover .arrow { width: 38px; }
+
+    .section-link .arrow::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: -3px;
+      width: 6px;
+      height: 6px;
+      border-right: 1px solid var(--fg);
+      border-top: 1px solid var(--fg);
+      transform: rotate(45deg);
+    }
+
+    .s1-bg { background: transparent; }
+    .s2-bg { background: transparent; }
+    .s3-bg { background: transparent; }
+    .s4-bg { background: transparent; }
+
+    .footer {
+      padding: 80px 48px 44px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      background: transparent;
+      position: relative;
+      z-index: 1;
+    }
+
+    .footer-left .footer-logo {
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--fg);
+      margin-bottom: 14px;
+    }
+
+    .footer-left p {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+      font-weight: 300;
+    }
+
+    .footer-right {
+      display: flex;
+      gap: 36px;
+    }
+
+    .footer-right a {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      cursor: none;
+      transition: color 0.3s;
+      font-weight: 400;
+    }
+
+    .footer-right a:hover { color: var(--fg); }
+
+    /* ── Page transition overlay ── */
+    .page-transition {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 9999;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .page-transition .shard {
+      position: absolute;
+      top: 0;
+      width: 20vw;
+      height: 100vh;
+      background: rgba(240, 241, 244, 0.55);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      border-right: 1px solid rgba(0,0,0,0.03);
+      transform: translateY(102%);
+      will-change: transform;
+    }
+
+    .page-transition .shard:nth-child(1) { left: 0; }
+    .page-transition .shard:nth-child(2) { left: 20vw; }
+    .page-transition .shard:nth-child(3) { left: 40vw; }
+    .page-transition .shard:nth-child(4) { left: 60vw; }
+    .page-transition .shard:nth-child(5) { left: 80vw; }
+
+    .page-transition.entering .shard {
+      animation: shardUp 0.6s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+    }
+
+    .page-transition.leaving .shard {
+      animation: shardOut 0.55s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+    }
+
+    .page-transition .shard:nth-child(1) { animation-delay: 0s; }
+    .page-transition .shard:nth-child(2) { animation-delay: 0.04s; }
+    .page-transition .shard:nth-child(3) { animation-delay: 0.08s; }
+    .page-transition .shard:nth-child(4) { animation-delay: 0.12s; }
+    .page-transition .shard:nth-child(5) { animation-delay: 0.16s; }
+
+    @keyframes shardUp {
+      0%   { transform: translateY(102%); }
+      100% { transform: translateY(0%); }
+    }
+
+    @keyframes shardOut {
+      0%   { transform: translateY(0%); }
+      100% { transform: translateY(-102%); }
+    }
+
+    /* ── Sub-pages ── */
+    .subpage {
+      display: none;
+      min-height: 100vh;
+      width: 100vw;
+      position: relative;
+      z-index: 2;
+    }
+
+    .subpage.active { display: block; }
+
+    .subpage-header {
+      padding: 160px 48px 80px;
+      text-align: center;
+    }
+
+    .subpage-header h1 {
+      font-weight: 300;
+      font-size: clamp(32px, 4.5vw, 64px);
+      letter-spacing: -0.03em;
+      color: var(--fg);
+      margin-bottom: 16px;
+    }
+
+    .subpage-header p {
+      font-size: 15px;
+      color: var(--muted);
+      max-width: 440px;
+      margin: 0 auto;
+      line-height: 1.85;
+      font-weight: 400;
+    }
+
+    .subpage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2px;
+      padding: 0 48px 120px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .subpage-card {
+      aspect-ratio: 4/3;
+      background: rgba(0,0,0,0.018);
+      display: flex;
+      align-items: flex-end;
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.5s;
+    }
+
+    .subpage-card:hover { background: rgba(0,0,0,0.035); }
+
+    .subpage-card .card-num {
+      position: absolute;
+      top: 24px;
+      left: 28px;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .subpage-card h3 {
+      font-weight: 300;
+      font-size: 16px;
+      letter-spacing: -0.01em;
+      color: var(--fg);
+      line-height: 1.35;
+    }
+
+    .subpage-card p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.65;
+      font-weight: 300;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--fg);
+      text-decoration: none;
+      cursor: none;
+      font-weight: 400;
+      margin-bottom: 48px;
+      transition: gap 0.3s;
+    }
+
+    .back-link:hover { gap: 18px; }
+
+    .back-link .arrow-back {
+      width: 22px;
+      height: 1px;
+      background: var(--fg);
+      position: relative;
+      transition: width 0.3s;
+    }
+
+    .back-link:hover .arrow-back { width: 38px; }
+
+    .back-link .arrow-back::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: -3px;
+      width: 6px;
+      height: 6px;
+      border-left: 1px solid var(--fg);
+      border-bottom: 1px solid var(--fg);
+      transform: rotate(45deg);
+    }
+
+    @media (max-width: 768px) {
+      nav { padding: 22px 24px; }
+      nav.scrolled { padding: 14px 24px; }
+      .nav-links { display: none; }
+      .hero-content { padding: 0 24px; }
+      .hero-title { font-size: 34px; }
+      .section-content { padding: 24px; }
+      .section-number { font-size: 72px; }
+      .footer { flex-direction: column; gap: 32px; align-items: flex-start; padding: 60px 24px 32px; }
+      .subpage-header { padding: 120px 24px 60px; }
+      .subpage-grid { padding: 0 24px 80px; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="bgCanvas"></canvas>
+  <div class="cursor" id="cursor"></div>
+  <div class="scroll-progress" id="scrollProgress"></div>
+
+  <!-- Page transition overlay -->
+  <div class="page-transition" id="pageTransition">
+    <div class="shard"></div>
+    <div class="shard"></div>
+    <div class="shard"></div>
+    <div class="shard"></div>
+    <div class="shard"></div>
+  </div>
+
+  <nav id="nav">
+    <div class="nav-logo"><a href="#" id="logoLink" data-hover style="text-decoration:none;color:inherit;cursor:none;">Body of Work</a></div>
+    <div class="nav-right">
+      <div class="nav-links">
+        <a href="#" data-hover data-page="exhibitions">Exhibitions</a>
+        <a href="#" data-hover data-page="artists">Artists</a>
+        <a href="#" data-hover data-page="archive">Archive</a>
+      </div>
+      <div class="nav-location">
+        <span class="dot"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ═══ MAIN PAGE ═══ -->
+  <div id="mainPage">
+    <div class="hero-container">
+      <section class="hero" id="hero">
+        <div class="hero-content" id="heroContent">
+          <h1 class="hero-title">Body of <em>Work</em></h1>
+        </div>
+      </section>
+    </div>
+
+    <section class="section">
+      <div class="section-bg"><div class="s1-bg parallax-layer" data-parallax="0.12"></div></div>
+      <div class="section-content" data-reveal>
+        <div class="glass-tag">Spatium</div>
+        <h2 class="section-title">Lacunae in perpetuum dissolvi</h2>
+        <p class="section-desc">Praesens absentia formam induit, dum spatia se ipsa complicant et superficies respirare incipiunt. Corpus obliviscitur ubi desinat et ars incipiat — materia in cogitationem transit.</p>
+        <a href="#" class="section-link" data-hover data-page="exhibitions">Intrare<span class="arrow"></span></a>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-bg"><div class="s2-bg parallax-layer" data-parallax="-0.1"></div></div>
+      <div class="section-content" data-reveal>
+        <div class="glass-tag">Corpus</div>
+        <h2 class="section-title">Sphaerae vitreae super corium undulans</h2>
+        <p class="section-desc">Gestus fit medium, corpus fit tela. Momenta ephemera in memoriam crystallisatam transformantur — guttae vitri super attentionis humanae superficiem volventes.</p>
+        <a href="#" class="section-link" data-hover data-page="artists">Videre<span class="arrow"></span></a>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-bg"><div class="s3-bg parallax-layer" data-parallax="0.1"></div></div>
+      <div class="section-content" data-reveal>
+        <div class="glass-tag">Nexus</div>
+        <h2 class="section-title">Manus se ipsae delineantes per scalas crystallinas</h2>
+        <p class="section-desc">Ubi algorithmus intuitioni occurrit. Opera digitalia quae limitem inter creationem organicam et praecisionem mathematicam interrogant — codex qui tactum sentit.</p>
+        <a href="#" class="section-link" data-hover data-page="archive">Explorare<span class="arrow"></span></a>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-bg"><div class="s4-bg parallax-layer" data-parallax="-0.08"></div></div>
+      <div class="section-content" data-reveal>
+        <div class="glass-tag">Residentia · 2026</div>
+        <h2 class="section-title">Os et crystallum in infinitum liquescentes</h2>
+        <p class="section-desc">Tres menses creationis sine interruptione in spatiis ad impossibilia provocanda designatis — ubi materia cogitatio fit et cogitatio formam accipit.</p>
+        <a href="#" class="section-link" data-hover>Applicare<span class="arrow"></span></a>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═══ EXHIBITIONS SUB-PAGE ═══ -->
+  <div id="page-exhibitions" class="subpage">
+    <div class="subpage-header">
+      <a href="#" class="back-link" data-hover data-page="main"><span class="arrow-back"></span>Retro</a>
+      <h1>Exhibitions</h1>
+      <p>Spatia quae se ipsa complicant, superficies quae respirant. Invitamus te ut limina transeas et impossibilia experiaris.</p>
+    </div>
+    <div class="subpage-grid">
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">001</div>
+        <div><h3>Reflexiones Infinitae</h3><p>Specula et lux in dialogo perpetuo</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">002</div>
+        <div><h3>Tactus Vitrei</h3><p>Crystallum et cutis in harmonia</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">003</div>
+        <div><h3>Limina Dissoluta</h3><p>Ubi forma in vacuum transit</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">004</div>
+        <div><h3>Architectura Impossibilis</h3><p>Scalae quae se ipsae ascendunt</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">005</div>
+        <div><h3>Umbrae Crystallinae</h3><p>Lux fracta per geometriam vivam</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">006</div>
+        <div><h3>Respiratio Materiae</h3><p>Superficies quae pulsant et vivunt</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ARTISTS SUB-PAGE ═══ -->
+  <div id="page-artists" class="subpage">
+    <div class="subpage-header">
+      <a href="#" class="back-link" data-hover data-page="main"><span class="arrow-back"></span>Retro</a>
+      <h1>Artists</h1>
+      <p>Creatores qui materiam in cogitationem et cogitationem in formam transformant. Mentes quae limina dissolvunt.</p>
+    </div>
+    <div class="subpage-grid">
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">I</div>
+        <div><h3>Elara Voss</h3><p>Installatio immersiva, lux et spatium</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">II</div>
+        <div><h3>Kael Morrow</h3><p>Performantia corporis et crystallum</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">III</div>
+        <div><h3>Seren Tanaka</h3><p>Algorithmi organici et texturae digitales</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">IV</div>
+        <div><h3>Idris Nakamura</h3><p>Sculptura sonora et vibrationes</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">V</div>
+        <div><h3>Maren Löf</h3><p>Architectura ephemera et materia fluida</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">VI</div>
+        <div><h3>Yuto Almeida</h3><p>Interfacies tactiles et sensus digitales</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ARCHIVE SUB-PAGE ═══ -->
+  <div id="page-archive" class="subpage">
+    <div class="subpage-header">
+      <a href="#" class="back-link" data-hover data-page="main"><span class="arrow-back"></span>Retro</a>
+      <h1>Archive</h1>
+      <p>Memoria crystallisata operum praeteritorum. Fragmenta et vestigia quae permanent dum formae evanescunt.</p>
+    </div>
+    <div class="subpage-grid">
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">2026</div>
+        <div><h3>Corpus Dissolutum</h3><p>Collectio verna — materia et absentia</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">2026</div>
+        <div><h3>Speculum Infinitum</h3><p>Reflexiones sine fine in vitro et luce</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">2026</div>
+        <div><h3>Tactus Primus</h3><p>Inauguratio — primae impressiones</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">2026</div>
+        <div><h3>Ossa Crystallina</h3><p>Structura interna formarum viventium</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">2026</div>
+        <div><h3>Liminalis</h3><p>Inter visibile et invisibile</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">2026</div>
+        <div><h3>Guttae Aeternae</h3><p>Crystallum in motu perpetuo</p></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-left">
+      <div class="footer-logo">Body of Work</div>
+      <p>© 2026 Body of Work. Omnia iura reservata.</p>
+    </div>
+    <div class="footer-right">
+      <a href="#" data-hover>Instagram</a>
+      <a href="#" data-hover>Newsletter</a>
+      <a href="#" data-hover>Contact</a>
+    </div>
+  </footer>
+
+  <script>
+    /* ── Cursor ── */
+    const cursor = document.getElementById('cursor');
+    let cursorX = -9999, cursorY = -9999, currentCX = 0, currentCY = 0;
+    document.addEventListener('mousemove', e => { cursorX = e.clientX; cursorY = e.clientY; });
+    (function animateCursor() {
+      currentCX += (cursorX - currentCX) * 0.14;
+      currentCY += (cursorY - currentCY) * 0.14;
+      cursor.style.left = currentCX + 'px';
+      cursor.style.top  = currentCY + 'px';
+      requestAnimationFrame(animateCursor);
+    })();
+
+    function bindHovers() {
+      document.querySelectorAll('[data-hover], a, button').forEach(el => {
+        el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
+        el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+      });
+    }
+    bindHovers();
+
+    /* ── Page navigation with transition ── */
+    const mainPage = document.getElementById('mainPage');
+    const subpages = document.querySelectorAll('.subpage');
+    const pageTransition = document.getElementById('pageTransition');
+    let isTransitioning = false;
+
+    function doPageSwitch(pageId) {
+      window.scrollTo(0, 0);
+      if (pageId === 'main') {
+        mainPage.style.display = '';
+        subpages.forEach(sp => sp.classList.remove('active'));
+      } else {
+        mainPage.style.display = 'none';
+        subpages.forEach(sp => sp.classList.remove('active'));
+        const target = document.getElementById('page-' + pageId);
+        if (target) target.classList.add('active');
+      }
+      document.querySelectorAll('[data-reveal]').forEach(el => {
+        el.classList.remove('visible');
+        revealObs.observe(el);
+      });
+      setTimeout(() => { lastDocH = 0; checkDocHeight(); }, 50);
+    }
+
+    function showPage(pageId) {
+      if (isTransitioning) return;
+      isTransitioning = true;
+
+      // Phase 1: shards sweep UP to cover the screen
+      pageTransition.classList.remove('leaving');
+      pageTransition.classList.add('entering');
+
+      // After shards fully cover, swap content
+      setTimeout(() => {
+        doPageSwitch(pageId);
+
+        // Phase 2: shards sweep UP and OUT (exit upward)
+        pageTransition.classList.remove('entering');
+        // Force reflow so the new animation class triggers fresh
+        void pageTransition.offsetWidth;
+        pageTransition.classList.add('leaving');
+
+        // After exit animation completes, clean up
+        setTimeout(() => {
+          pageTransition.classList.remove('leaving');
+          // Reset shards to below-screen position
+          pageTransition.querySelectorAll('.shard').forEach(s => {
+            s.style.transform = 'translateY(102%)';
+          });
+          isTransitioning = false;
+        }, 750);
+      }, 700);
+    }
+
+    document.addEventListener('click', e => {
+      const link = e.target.closest('[data-page]');
+      if (link) {
+        e.preventDefault();
+        showPage(link.dataset.page);
+      }
+    });
+
+    document.getElementById('logoLink').addEventListener('click', e => {
+      e.preventDefault();
+      showPage('main');
+    });
+
+    /* ── Scroll logic ── */
+    const scrollProgress = document.getElementById('scrollProgress');
+    const nav = document.getElementById('nav');
+    const heroContent = document.getElementById('heroContent');
+
+    let currentScrollY = 0;
+    let scrollVelocity = 0;
+
+    window.addEventListener('scroll', () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = docHeight > 0 ? scrollTop / docHeight : 0;
+      scrollProgress.style.width = (pct * 100) + '%';
+      nav.classList.toggle('scrolled', scrollTop > 80);
+
+      if (mainPage.style.display !== 'none') {
+        const heroFade = Math.max(0, 1 - scrollTop / (window.innerHeight * 0.65));
+        heroContent.style.opacity = heroFade;
+        heroContent.style.transform = `translateY(${scrollTop * 0.12}px)`;
+        document.querySelectorAll('[data-parallax]').forEach(el => {
+          const rect = el.closest('.section').getBoundingClientRect();
+          el.style.transform = `translateY(${rect.top * parseFloat(el.dataset.parallax)}px)`;
+        });
+      }
+      scrollVelocity += Math.abs(scrollTop - currentScrollY);
+      currentScrollY = scrollTop;
+    }, { passive: true });
+
+    /* ── Scroll reveal ── */
+    const revealObs = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.12, rootMargin: '0px 0px -50px 0px' });
+    document.querySelectorAll('[data-reveal]').forEach(el => revealObs.observe(el));
+
+    /* ═══════════════════════════════════════════════════════
+       WATER RIPPLE — full-document seamless
+       ═══════════════════════════════════════════════════════ */
+
+    const canvas = document.getElementById('bgCanvas');
+    const ctx = canvas.getContext('2d');
+    let W, H;
+
+    /* ── Perlin noise ── */
+    const PERM = new Uint8Array(512);
+    const GRAD = [[1,1],[-1,1],[1,-1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]];
+    (function(){
+      const p = new Uint8Array(256);
+      for(let i=0;i<256;i++) p[i]=i;
+      for(let i=255;i>0;i--){ const j=(Math.random()*(i+1))|0; [p[i],p[j]]=[p[j],p[i]]; }
+      for(let i=0;i<512;i++) PERM[i]=p[i&255];
+    })();
+    function noise2d(x,y){
+      const ix=Math.floor(x)&255, iy=Math.floor(y)&255;
+      const fx=x-Math.floor(x), fy=y-Math.floor(y);
+      const ux=fx*fx*(3-2*fx), uy=fy*fy*(3-2*fy);
+      const g00=GRAD[PERM[ix+PERM[iy]]&7], g10=GRAD[PERM[ix+1+PERM[iy]]&7];
+      const g01=GRAD[PERM[ix+PERM[iy+1]]&7], g11=GRAD[PERM[ix+1+PERM[iy+1]]&7];
+      const n00=g00[0]*fx+g00[1]*fy, n10=g10[0]*(fx-1)+g10[1]*fy;
+      const n01=g01[0]*fx+g01[1]*(fy-1), n11=g11[0]*(fx-1)+g11[1]*(fy-1);
+      return (n00+ux*(n10-n00))+uy*((n01+ux*(n11-n01))-(n00+ux*(n10-n00)));
+    }
+    function fbm(x,y,oct){
+      let v=0,a=0.5,f=1;
+      for(let i=0;i<oct;i++){v+=a*noise2d(x*f,y*f);a*=0.5;f*=2;}
+      return v;
+    }
+
+    /* ── Background texture ── */
+    let bgTexture = null, bgTexH = 0;
+
+    function generateBgTexture() {
+      const fullH = Math.max(document.documentElement.scrollHeight, H);
+      bgTexH = fullH;
+      const off = document.createElement('canvas');
+      off.width = W; off.height = fullH;
+      const octx = off.getContext('2d');
+      octx.fillStyle = '#eaebf0';
+      octx.fillRect(0, 0, W, fullH);
+      const STRIP = 512;
+      for (let sy = 0; sy < fullH; sy += STRIP) {
+        const sh = Math.min(STRIP, fullH - sy);
+        const imgData = octx.getImageData(0, sy, W, sh);
+        const d = imgData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const px = (i/4) % W;
+          const py = sy + ((i/4)/W|0);
+          const nx = px/W, ny = py/fullH;
+          const drift = fbm(nx*2.5, ny*5.0, 3)*2.5;
+          const mid   = fbm(px*0.008+3.7, py*0.005+1.2, 3)*1.5;
+          const grain = noise2d(px*0.04, py*0.04)*0.8;
+          const micro = (Math.random()-0.5)*1.2;
+          const cx2=(nx-0.5)*2, cy2=(ny-0.5)*2;
+          const vig=(cx2*cx2+cy2*cy2)*0.8;
+          const base=237;
+          const lum=base+drift+mid+grain+micro-vig;
+          d[i]  =Math.max(228,Math.min(248,lum-1.2));
+          d[i+1]=Math.max(229,Math.min(249,lum-0.4));
+          d[i+2]=Math.max(233,Math.min(252,lum+1.5));
+        }
+        octx.putImageData(imgData, 0, sy);
+      }
+      bgTexture = off;
+    }
+
+    /* ── Ripple simulation grid ── */
+    const SCALE = 3;
+    let rw, rh;
+    let curr, prev;
+
+    function initRipple() {
+      rw = Math.ceil(W / SCALE);
+      rh = Math.ceil(H / SCALE);
+      curr = new Float32Array(rw * rh);
+      prev = new Float32Array(rw * rh);
+    }
+
+    function dropRipple(cx, cy, radius, strength) {
+      const gx = (cx / SCALE) | 0;
+      const gy = (cy / SCALE) | 0;
+      const gr = Math.ceil(radius / SCALE);
+      for (let dy = -gr; dy <= gr; dy++) {
+        for (let dx = -gr; dx <= gr; dx++) {
+          const ix = gx + dx, iy = gy + dy;
+          if (ix < 0 || ix >= rw || iy < 0 || iy >= rh) continue;
+          const d = Math.sqrt(dx*dx + dy*dy) / gr;
+          if (d < 1) {
+            const amp = strength * (1 - d*d);
+            curr[iy * rw + ix] += amp;
+          }
+        }
+      }
+    }
+
+    const DAMPING = 0.982;
+
+    function stepRipple() {
+      const next = new Float32Array(rw * rh);
+      for (let y = 1; y < rh - 1; y++) {
+        for (let x = 1; x < rw - 1; x++) {
+          const i = y * rw + x;
+          const neighbors =
+            curr[i - 1] + curr[i + 1] +
+            curr[i - rw] + curr[i + rw] +
+            (curr[i - rw - 1] + curr[i - rw + 1] +
+             curr[i + rw - 1] + curr[i + rw + 1]) * 0.5;
+          next[i] = (neighbors / 3.0 - prev[i]) * DAMPING;
+        }
+      }
+      prev = curr;
+      curr = next;
+    }
+
+    /* ── Mouse tracking ── */
+    let mouseX = -9999, mouseY = -9999;
+    let lastDropX = -9999, lastDropY = -9999;
+
+    document.addEventListener('mousemove', e => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+    /* ── Render ── */
+    let lastDocH = 0;
+    let time = 0;
+
+    function checkDocHeight() {
+      const h = document.documentElement.scrollHeight;
+      if (Math.abs(h - lastDocH) > 100) { lastDocH = h; generateBgTexture(); }
+    }
+
+    function resize() {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+      initRipple();
+      generateBgTexture();
+    }
+
+    resize();
+    window.addEventListener('resize', resize);
+
+    let frameCount = 0;
+
+    function frame() {
+      frameCount++;
+      time += 0.016;
+
+      if (frameCount % 120 === 0) checkDocHeight();
+
+      /* Mouse drops */
+      const ddx = mouseX - lastDropX, ddy = mouseY - lastDropY;
+      const moveDist = Math.sqrt(ddx*ddx + ddy*ddy);
+      if (moveDist > 8 && mouseX > 0) {
+        dropRipple(mouseX, mouseY, 28, 0.25);
+        lastDropX = mouseX;
+        lastDropY = mouseY;
+      }
+
+      /* Scroll-velocity drops */
+      if (scrollVelocity > 3) {
+        const sx = mouseX > 0 ? mouseX : W * 0.5;
+        const sy = mouseY > 0 ? mouseY : H * 0.5;
+        const str = Math.min(scrollVelocity * 0.004, 0.4);
+        dropRipple(sx, sy, 50, str);
+        dropRipple(
+          sx + (Math.random() - 0.5) * 120,
+          sy + (Math.random() - 0.5) * 80,
+          35, str * 0.5
+        );
+      }
+
+      /* Breathing pulses */
+      if (frameCount % 90 === 0) {
+        dropRipple(
+          W * (0.2 + Math.random() * 0.6),
+          H * (0.2 + Math.random() * 0.6),
+          120 + Math.random() * 60,
+          0.04 + Math.random() * 0.03
+        );
+      }
+
+      stepRipple();
+
+      /* Render */
+      if (!bgTexture) {
+        ctx.fillStyle = '#eaebf0';
+        ctx.fillRect(0, 0, W, H);
+        scrollVelocity *= 0.88;
+        requestAnimationFrame(frame);
+        return;
+      }
+
+      const sTop = Math.min(Math.round(currentScrollY), Math.max(0, bgTexH - H));
+      ctx.drawImage(bgTexture, 0, sTop, W, H, 0, 0, W, H);
+
+      const imgData = ctx.getImageData(0, 0, W, H);
+      const src = imgData.data;
+      const srcImg = ctx.getImageData(0, 0, W, H);
+      const srcD = srcImg.data;
+
+      for (let y = 0; y < H; y++) {
+        const gy = (y / SCALE) | 0;
+        if (gy < 1 || gy >= rh - 1) continue;
+        for (let x = 0; x < W; x++) {
+          const gx = (x / SCALE) | 0;
+          if (gx < 1 || gx >= rw - 1) continue;
+
+          const gi = gy * rw + gx;
+          const val = curr[gi];
+          if (Math.abs(val) < 0.003) continue;
+
+          const gradX = curr[gi + 1] - curr[gi - 1];
+          const gradY = curr[gi + rw] - curr[gi - rw];
+
+          const dispStr = 8;
+          const ox = Math.round(gradX * dispStr);
+          const oy = Math.round(gradY * dispStr);
+
+          const sx2 = Math.max(0, Math.min(W-1, x + ox));
+          const sy2 = Math.max(0, Math.min(H-1, y + oy));
+
+          const srcIdx = (sy2 * W + sx2) * 4;
+          const dstIdx = (y * W + x) * 4;
+
+          src[dstIdx]     = srcD[srcIdx];
+          src[dstIdx + 1] = srcD[srcIdx + 1];
+          src[dstIdx + 2] = srcD[srcIdx + 2];
+
+          const shadow = (gradX * 1.8 + gradY * 1.2);
+          const depth = val * -2.0;
+          const totalShade = shadow + depth;
+
+          src[dstIdx]     = Math.max(0, Math.min(255, src[dstIdx]     - totalShade * 8));
+          src[dstIdx + 1] = Math.max(0, Math.min(255, src[dstIdx + 1] - totalShade * 8));
+          src[dstIdx + 2] = Math.max(0, Math.min(255, src[dstIdx + 2] - totalShade * 8));
+        }
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+
+      scrollVelocity *= 0.88;
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
