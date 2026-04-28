@@ -10,10 +10,10 @@
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg: #f7f7f8;
-      --fg: #1a1a1a;
-      --muted: #8a8a8e;
-      --accent: #9a9a9e;
+      --bg: #f0f1f4;
+      --fg: #1a1a1d;
+      --muted: #7e808a;
+      --accent: #8e909a;
       --glass-bg: rgba(0,0,0,0.02);
       --glass-border: rgba(0,0,0,0.05);
     }
@@ -77,7 +77,7 @@
 
     nav.scrolled {
       padding: 18px 48px;
-      background: rgba(247,247,248,0.65);
+      background: rgba(240,241,244,0.65);
       backdrop-filter: blur(30px);
       -webkit-backdrop-filter: blur(30px);
       border-bottom: 1px solid var(--glass-border);
@@ -96,6 +96,39 @@
       align-items: center;
       gap: 36px;
     }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .nav-links a {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      cursor: none;
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      position: relative;
+      transition: color 0.3s;
+    }
+
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 1px;
+      background: var(--fg);
+      transition: width 0.3s;
+    }
+
+    .nav-links a:hover { color: var(--fg); }
+    .nav-links a:hover::after { width: 100%; }
 
     .nav-location {
       font-size: 10px;
@@ -120,32 +153,6 @@
       50% { opacity: 0.2; }
     }
 
-    .nav-menu {
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--fg);
-      background: none;
-      border: none;
-      cursor: none;
-      font-family: 'Inter', sans-serif;
-      font-weight: 400;
-      position: relative;
-    }
-
-    .nav-menu::after {
-      content: '';
-      position: absolute;
-      bottom: -2px;
-      left: 0;
-      width: 0;
-      height: 1px;
-      background: var(--fg);
-      transition: width 0.3s;
-    }
-
-    .nav-menu:hover::after { width: 100%; }
-
     .scroll-progress {
       position: fixed;
       top: 0;
@@ -154,22 +161,6 @@
       background: linear-gradient(90deg, transparent, rgba(0,0,0,0.12), transparent);
       z-index: 1001;
       transition: width 0.1s linear;
-    }
-
-    .side-text {
-      position: fixed;
-      right: 48px;
-      top: 50%;
-      transform: translateY(-50%) rotate(90deg);
-      transform-origin: center;
-      font-size: 9px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: var(--muted);
-      z-index: 100;
-      white-space: nowrap;
-      opacity: 0;
-      transition: opacity 0.6s;
     }
 
     .hero-container {
@@ -184,23 +175,23 @@
       width: 100vw;
       overflow: hidden;
       display: flex;
-      align-items: flex-end;
-      padding: 0 48px 90px;
+      align-items: center;
+      justify-content: center;
       background: transparent;
     }
 
     .hero-content {
       position: relative;
       z-index: 2;
+      text-align: center;
       max-width: 860px;
     }
 
     .hero-title {
       font-weight: 300;
-      font-size: clamp(38px, 5.5vw, 78px);
+      font-size: clamp(42px, 6vw, 88px);
       line-height: 1.06;
       letter-spacing: -0.03em;
-      margin-bottom: 28px;
       color: var(--fg);
     }
 
@@ -210,21 +201,13 @@
       color: var(--accent);
     }
 
-    .hero-sub {
-      font-size: 13px;
-      line-height: 1.75;
-      color: var(--muted);
-      max-width: 360px;
-      letter-spacing: 0.01em;
-      font-weight: 300;
-    }
-
     .section {
       position: relative;
       min-height: 100vh;
       width: 100vw;
       display: flex;
       align-items: center;
+      justify-content: center;
       overflow: hidden;
       background: transparent;
     }
@@ -244,18 +227,12 @@
       will-change: transform;
     }
 
-    .section:nth-child(odd) .section-content  { padding-left: 8%; }
-    .section:nth-child(even) .section-content {
-      margin-left: auto;
-      padding-right: 8%;
-      text-align: right;
-    }
-
     .section-content {
       position: relative;
       z-index: 2;
       max-width: 580px;
       padding: 48px;
+      text-align: center;
       opacity: 0;
       transform: translateY(50px);
       transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
@@ -300,11 +277,11 @@
     }
 
     .section-desc {
-      font-size: 13px;
+      font-size: 15px;
       line-height: 1.85;
       color: var(--muted);
       letter-spacing: 0.01em;
-      font-weight: 300;
+      font-weight: 400;
     }
 
     .section-link {
@@ -351,14 +328,6 @@
     .s3-bg { background: transparent; }
     .s4-bg { background: transparent; }
 
-    .section-divider {
-      width: 100%;
-      height: 1px;
-      background: linear-gradient(90deg, transparent 5%, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.04) 70%, transparent 95%);
-      position: relative;
-      z-index: 1;
-    }
-
     .footer {
       padding: 80px 48px 44px;
       display: flex;
@@ -403,101 +372,384 @@
 
     .footer-right a:hover { color: var(--fg); }
 
+    /* ── Page transition overlay ── */
+    .page-transition {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 9999;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .page-transition .shard {
+      position: absolute;
+      top: 0;
+      width: 20vw;
+      height: 100vh;
+      background: rgba(240, 241, 244, 0.55);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      border-right: 1px solid rgba(0,0,0,0.03);
+      transform: translateY(102%);
+      will-change: transform;
+    }
+
+    .page-transition .shard:nth-child(1) { left: 0; }
+    .page-transition .shard:nth-child(2) { left: 20vw; }
+    .page-transition .shard:nth-child(3) { left: 40vw; }
+    .page-transition .shard:nth-child(4) { left: 60vw; }
+    .page-transition .shard:nth-child(5) { left: 80vw; }
+
+    .page-transition.entering .shard {
+      animation: shardUp 0.6s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+    }
+
+    .page-transition.leaving .shard {
+      animation: shardOut 0.55s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+    }
+
+    .page-transition .shard:nth-child(1) { animation-delay: 0s; }
+    .page-transition .shard:nth-child(2) { animation-delay: 0.04s; }
+    .page-transition .shard:nth-child(3) { animation-delay: 0.08s; }
+    .page-transition .shard:nth-child(4) { animation-delay: 0.12s; }
+    .page-transition .shard:nth-child(5) { animation-delay: 0.16s; }
+
+    @keyframes shardUp {
+      0%   { transform: translateY(102%); }
+      100% { transform: translateY(0%); }
+    }
+
+    @keyframes shardOut {
+      0%   { transform: translateY(0%); }
+      100% { transform: translateY(-102%); }
+    }
+
+    /* ── Sub-pages ── */
+    .subpage {
+      display: none;
+      min-height: 100vh;
+      width: 100vw;
+      position: relative;
+      z-index: 2;
+    }
+
+    .subpage.active { display: block; }
+
+    .subpage-header {
+      padding: 160px 48px 80px;
+      text-align: center;
+    }
+
+    .subpage-header h1 {
+      font-weight: 300;
+      font-size: clamp(32px, 4.5vw, 64px);
+      letter-spacing: -0.03em;
+      color: var(--fg);
+      margin-bottom: 16px;
+    }
+
+    .subpage-header p {
+      font-size: 15px;
+      color: var(--muted);
+      max-width: 440px;
+      margin: 0 auto;
+      line-height: 1.85;
+      font-weight: 400;
+    }
+
+    .subpage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2px;
+      padding: 0 48px 120px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .subpage-card {
+      aspect-ratio: 4/3;
+      background: rgba(0,0,0,0.018);
+      display: flex;
+      align-items: flex-end;
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.5s;
+    }
+
+    .subpage-card:hover { background: rgba(0,0,0,0.035); }
+
+    .subpage-card .card-num {
+      position: absolute;
+      top: 24px;
+      left: 28px;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .subpage-card h3 {
+      font-weight: 300;
+      font-size: 16px;
+      letter-spacing: -0.01em;
+      color: var(--fg);
+      line-height: 1.35;
+    }
+
+    .subpage-card p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.65;
+      font-weight: 300;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--fg);
+      text-decoration: none;
+      cursor: none;
+      font-weight: 400;
+      margin-bottom: 48px;
+      transition: gap 0.3s;
+    }
+
+    .back-link:hover { gap: 18px; }
+
+    .back-link .arrow-back {
+      width: 22px;
+      height: 1px;
+      background: var(--fg);
+      position: relative;
+      transition: width 0.3s;
+    }
+
+    .back-link:hover .arrow-back { width: 38px; }
+
+    .back-link .arrow-back::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: -3px;
+      width: 6px;
+      height: 6px;
+      border-left: 1px solid var(--fg);
+      border-bottom: 1px solid var(--fg);
+      transform: rotate(45deg);
+    }
+
     @media (max-width: 768px) {
       nav { padding: 22px 24px; }
       nav.scrolled { padding: 14px 24px; }
-      .hero { padding: 0 24px 64px; }
+      .nav-links { display: none; }
+      .hero-content { padding: 0 24px; }
       .hero-title { font-size: 34px; }
-      .side-text { display: none; }
-      .section:nth-child(odd) .section-content,
-      .section:nth-child(even) .section-content { padding: 24px; margin-left: 0; text-align: left; }
+      .section-content { padding: 24px; }
       .section-number { font-size: 72px; }
       .footer { flex-direction: column; gap: 32px; align-items: flex-start; padding: 60px 24px 32px; }
+      .subpage-header { padding: 120px 24px 60px; }
+      .subpage-grid { padding: 0 24px 80px; }
     }
   </style>
 </head>
 <body>
 
   <canvas id="bgCanvas"></canvas>
-
   <div class="cursor" id="cursor"></div>
   <div class="scroll-progress" id="scrollProgress"></div>
 
+  <!-- Page transition overlay -->
+  <div class="page-transition" id="pageTransition">
+    <div class="shard"></div>
+    <div class="shard"></div>
+    <div class="shard"></div>
+    <div class="shard"></div>
+    <div class="shard"></div>
+  </div>
+
   <nav id="nav">
-    <div class="nav-logo">Body of Work</div>
+    <div class="nav-logo"><a href="#" id="logoLink" data-hover style="text-decoration:none;color:inherit;cursor:none;">Body of Work</a></div>
     <div class="nav-right">
+      <div class="nav-links">
+        <a href="#" data-hover data-page="exhibitions">Exhibitions</a>
+        <a href="#" data-hover data-page="artists">Artists</a>
+        <a href="#" data-hover data-page="archive">Archive</a>
+      </div>
       <div class="nav-location">
         <span class="dot"></span>
-        Los Angeles
       </div>
-      <button class="nav-menu" data-hover>Menu</button>
     </div>
   </nav>
 
-  <div class="side-text" id="sideText">Immersive · Performance · Digital — 2026</div>
+  <!-- ═══ MAIN PAGE ═══ -->
+  <div id="mainPage">
+    <div class="hero-container">
+      <section class="hero" id="hero">
+        <div class="hero-content" id="heroContent">
+          <h1 class="hero-title">Body of <em>Work</em></h1>
+        </div>
+      </section>
+    </div>
 
-  <div class="hero-container">
-    <section class="hero" id="hero">
-      <div class="hero-content" id="heroContent">
-        <h1 class="hero-title">Where the tactile<br>meets <em>the impossible.</em></h1>
-        <p class="hero-sub">An exclusive platform for immersive, performance, and digital art — surfaces that breathe, forms that dissolve.</p>
+    <section class="section">
+      <div class="section-bg"><div class="s1-bg parallax-layer" data-parallax="0.12"></div></div>
+      <div class="section-content" data-reveal>
+        <div class="glass-tag">Spatium</div>
+        <h2 class="section-title">Lacunae in perpetuum dissolvi</h2>
+        <p class="section-desc">Praesens absentia formam induit, dum spatia se ipsa complicant et superficies respirare incipiunt. Corpus obliviscitur ubi desinat et ars incipiat — materia in cogitationem transit.</p>
+        <a href="#" class="section-link" data-hover data-page="exhibitions">Intrare<span class="arrow"></span></a>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-bg"><div class="s2-bg parallax-layer" data-parallax="-0.1"></div></div>
+      <div class="section-content" data-reveal>
+        <div class="glass-tag">Corpus</div>
+        <h2 class="section-title">Sphaerae vitreae super corium undulans</h2>
+        <p class="section-desc">Gestus fit medium, corpus fit tela. Momenta ephemera in memoriam crystallisatam transformantur — guttae vitri super attentionis humanae superficiem volventes.</p>
+        <a href="#" class="section-link" data-hover data-page="artists">Videre<span class="arrow"></span></a>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-bg"><div class="s3-bg parallax-layer" data-parallax="0.1"></div></div>
+      <div class="section-content" data-reveal>
+        <div class="glass-tag">Nexus</div>
+        <h2 class="section-title">Manus se ipsae delineantes per scalas crystallinas</h2>
+        <p class="section-desc">Ubi algorithmus intuitioni occurrit. Opera digitalia quae limitem inter creationem organicam et praecisionem mathematicam interrogant — codex qui tactum sentit.</p>
+        <a href="#" class="section-link" data-hover data-page="archive">Explorare<span class="arrow"></span></a>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-bg"><div class="s4-bg parallax-layer" data-parallax="-0.08"></div></div>
+      <div class="section-content" data-reveal>
+        <div class="glass-tag">Residentia · 2026</div>
+        <h2 class="section-title">Os et crystallum in infinitum liquescentes</h2>
+        <p class="section-desc">Tres menses creationis sine interruptione in spatiis ad impossibilia provocanda designatis — ubi materia cogitatio fit et cogitatio formam accipit.</p>
+        <a href="#" class="section-link" data-hover>Applicare<span class="arrow"></span></a>
       </div>
     </section>
   </div>
 
-  <div class="section-divider"></div>
-  <section class="section">
-    <div class="section-bg"><div class="s1-bg parallax-layer" data-parallax="0.12"></div></div>
-    <div class="section-content" data-reveal>
-      <div class="section-number">01</div>
-      <div class="glass-tag">Immersive Installations</div>
-      <h2 class="section-title">Impossible architectures dissolving into skin</h2>
-      <p class="section-desc">Walk through Escher-inspired labyrinths rendered in light and glass. Spaces that fold inward, surfaces that breathe — installations that make the body forget where it ends and the art begins.</p>
-      <a href="#" class="section-link" data-hover>Explore works<span class="arrow"></span></a>
+  <!-- ═══ EXHIBITIONS SUB-PAGE ═══ -->
+  <div id="page-exhibitions" class="subpage">
+    <div class="subpage-header">
+      <a href="#" class="back-link" data-hover data-page="main"><span class="arrow-back"></span>Retro</a>
+      <h1>Exhibitions</h1>
+      <p>Spatia quae se ipsa complicant, superficies quae respirant. Invitamus te ut limina transeas et impossibilia experiaris.</p>
     </div>
-  </section>
-
-  <div class="section-divider"></div>
-  <section class="section">
-    <div class="section-bg"><div class="s2-bg parallax-layer" data-parallax="-0.1"></div></div>
-    <div class="section-content" data-reveal>
-      <div class="section-number">02</div>
-      <div class="glass-tag">Performance Art</div>
-      <h2 class="section-title">Glass spheres rolling across undulating leather</h2>
-      <p class="section-desc">The body as canvas, the gesture as medium. Our performance artists transform ephemeral moments into crystallised memory — rolling like drops of glass across the landscape of human attention.</p>
-      <a href="#" class="section-link" data-hover>View artists<span class="arrow"></span></a>
+    <div class="subpage-grid">
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">001</div>
+        <div><h3>Reflexiones Infinitae</h3><p>Specula et lux in dialogo perpetuo</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">002</div>
+        <div><h3>Tactus Vitrei</h3><p>Crystallum et cutis in harmonia</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">003</div>
+        <div><h3>Limina Dissoluta</h3><p>Ubi forma in vacuum transit</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">004</div>
+        <div><h3>Architectura Impossibilis</h3><p>Scalae quae se ipsae ascendunt</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">005</div>
+        <div><h3>Umbrae Crystallinae</h3><p>Lux fracta per geometriam vivam</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">006</div>
+        <div><h3>Respiratio Materiae</h3><p>Superficies quae pulsant et vivunt</p></div>
+      </div>
     </div>
-  </section>
+  </div>
 
-  <div class="section-divider"></div>
-  <section class="section">
-    <div class="section-bg"><div class="s3-bg parallax-layer" data-parallax="0.1"></div></div>
-    <div class="section-content" data-reveal>
-      <div class="section-number">03</div>
-      <div class="glass-tag">Digital Frontiers</div>
-      <h2 class="section-title">Self-drawing hands tracing crystal staircases</h2>
-      <p class="section-desc">Where algorithm meets intuition. Digital works that question the boundary between organic creation and mathematical precision — code that feels like touch, pixels that carry weight.</p>
-      <a href="#" class="section-link" data-hover>Enter gallery<span class="arrow"></span></a>
+  <!-- ═══ ARTISTS SUB-PAGE ═══ -->
+  <div id="page-artists" class="subpage">
+    <div class="subpage-header">
+      <a href="#" class="back-link" data-hover data-page="main"><span class="arrow-back"></span>Retro</a>
+      <h1>Artists</h1>
+      <p>Creatores qui materiam in cogitationem et cogitationem in formam transformant. Mentes quae limina dissolvunt.</p>
     </div>
-  </section>
-
-  <div class="section-divider"></div>
-  <section class="section">
-    <div class="section-bg"><div class="s4-bg parallax-layer" data-parallax="-0.08"></div></div>
-    <div class="section-content" data-reveal>
-      <div class="section-number">04</div>
-      <div class="glass-tag">Residencies · 2026</div>
-      <h2 class="section-title">Bone and crystal melting into the infinite</h2>
-      <p class="section-desc">Our residency programme invites artists to dissolve the known. Three months of uninterrupted creation in spaces designed to provoke the impossible — where material becomes thought and thought becomes form.</p>
-      <a href="#" class="section-link" data-hover>Apply now<span class="arrow"></span></a>
+    <div class="subpage-grid">
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">I</div>
+        <div><h3>Elara Voss</h3><p>Installatio immersiva, lux et spatium</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">II</div>
+        <div><h3>Kael Morrow</h3><p>Performantia corporis et crystallum</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">III</div>
+        <div><h3>Seren Tanaka</h3><p>Algorithmi organici et texturae digitales</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">IV</div>
+        <div><h3>Idris Nakamura</h3><p>Sculptura sonora et vibrationes</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">V</div>
+        <div><h3>Maren Löf</h3><p>Architectura ephemera et materia fluida</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">VI</div>
+        <div><h3>Yuto Almeida</h3><p>Interfacies tactiles et sensus digitales</p></div>
+      </div>
     </div>
-  </section>
+  </div>
 
-  <div class="section-divider"></div>
+  <!-- ═══ ARCHIVE SUB-PAGE ═══ -->
+  <div id="page-archive" class="subpage">
+    <div class="subpage-header">
+      <a href="#" class="back-link" data-hover data-page="main"><span class="arrow-back"></span>Retro</a>
+      <h1>Archive</h1>
+      <p>Memoria crystallisata operum praeteritorum. Fragmenta et vestigia quae permanent dum formae evanescunt.</p>
+    </div>
+    <div class="subpage-grid">
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">2026</div>
+        <div><h3>Corpus Dissolutum</h3><p>Collectio verna — materia et absentia</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">2026</div>
+        <div><h3>Speculum Infinitum</h3><p>Reflexiones sine fine in vitro et luce</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">2026</div>
+        <div><h3>Tactus Primus</h3><p>Inauguratio — primae impressiones</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">2026</div>
+        <div><h3>Ossa Crystallina</h3><p>Structura interna formarum viventium</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">2026</div>
+        <div><h3>Liminalis</h3><p>Inter visibile et invisibile</p></div>
+      </div>
+      <div class="subpage-card" data-reveal>
+        <div class="card-num">2026</div>
+        <div><h3>Guttae Aeternae</h3><p>Crystallum in motu perpetuo</p></div>
+      </div>
+    </div>
+  </div>
+
   <footer class="footer">
     <div class="footer-left">
       <div class="footer-logo">Body of Work</div>
-      <p>© 2026 Body of Work. All rights reserved.</p>
+      <p>© 2026 Body of Work. Omnia iura reservata.</p>
     </div>
     <div class="footer-right">
       <a href="#" data-hover>Instagram</a>
@@ -518,16 +770,86 @@
       cursor.style.top  = currentCY + 'px';
       requestAnimationFrame(animateCursor);
     })();
-    document.querySelectorAll('[data-hover], a, button').forEach(el => {
-      el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
-      el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+
+    function bindHovers() {
+      document.querySelectorAll('[data-hover], a, button').forEach(el => {
+        el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
+        el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+      });
+    }
+    bindHovers();
+
+    /* ── Page navigation with transition ── */
+    const mainPage = document.getElementById('mainPage');
+    const subpages = document.querySelectorAll('.subpage');
+    const pageTransition = document.getElementById('pageTransition');
+    let isTransitioning = false;
+
+    function doPageSwitch(pageId) {
+      window.scrollTo(0, 0);
+      if (pageId === 'main') {
+        mainPage.style.display = '';
+        subpages.forEach(sp => sp.classList.remove('active'));
+      } else {
+        mainPage.style.display = 'none';
+        subpages.forEach(sp => sp.classList.remove('active'));
+        const target = document.getElementById('page-' + pageId);
+        if (target) target.classList.add('active');
+      }
+      document.querySelectorAll('[data-reveal]').forEach(el => {
+        el.classList.remove('visible');
+        revealObs.observe(el);
+      });
+      setTimeout(() => { lastDocH = 0; checkDocHeight(); }, 50);
+    }
+
+    function showPage(pageId) {
+      if (isTransitioning) return;
+      isTransitioning = true;
+
+      // Phase 1: shards sweep UP to cover the screen
+      pageTransition.classList.remove('leaving');
+      pageTransition.classList.add('entering');
+
+      // After shards fully cover, swap content
+      setTimeout(() => {
+        doPageSwitch(pageId);
+
+        // Phase 2: shards sweep UP and OUT (exit upward)
+        pageTransition.classList.remove('entering');
+        // Force reflow so the new animation class triggers fresh
+        void pageTransition.offsetWidth;
+        pageTransition.classList.add('leaving');
+
+        // After exit animation completes, clean up
+        setTimeout(() => {
+          pageTransition.classList.remove('leaving');
+          // Reset shards to below-screen position
+          pageTransition.querySelectorAll('.shard').forEach(s => {
+            s.style.transform = 'translateY(102%)';
+          });
+          isTransitioning = false;
+        }, 750);
+      }, 700);
+    }
+
+    document.addEventListener('click', e => {
+      const link = e.target.closest('[data-page]');
+      if (link) {
+        e.preventDefault();
+        showPage(link.dataset.page);
+      }
+    });
+
+    document.getElementById('logoLink').addEventListener('click', e => {
+      e.preventDefault();
+      showPage('main');
     });
 
     /* ── Scroll logic ── */
     const scrollProgress = document.getElementById('scrollProgress');
     const nav = document.getElementById('nav');
     const heroContent = document.getElementById('heroContent');
-    const sideText = document.getElementById('sideText');
 
     let currentScrollY = 0;
     let scrollVelocity = 0;
@@ -538,14 +860,16 @@
       const pct = docHeight > 0 ? scrollTop / docHeight : 0;
       scrollProgress.style.width = (pct * 100) + '%';
       nav.classList.toggle('scrolled', scrollTop > 80);
-      const heroFade = Math.max(0, 1 - scrollTop / (window.innerHeight * 0.65));
-      heroContent.style.opacity = heroFade;
-      heroContent.style.transform = `translateY(${scrollTop * 0.12}px)`;
-      sideText.style.opacity = scrollTop > 200 ? 1 : 0;
-      document.querySelectorAll('[data-parallax]').forEach(el => {
-        const rect = el.closest('.section').getBoundingClientRect();
-        el.style.transform = `translateY(${rect.top * parseFloat(el.dataset.parallax)}px)`;
-      });
+
+      if (mainPage.style.display !== 'none') {
+        const heroFade = Math.max(0, 1 - scrollTop / (window.innerHeight * 0.65));
+        heroContent.style.opacity = heroFade;
+        heroContent.style.transform = `translateY(${scrollTop * 0.12}px)`;
+        document.querySelectorAll('[data-parallax]').forEach(el => {
+          const rect = el.closest('.section').getBoundingClientRect();
+          el.style.transform = `translateY(${rect.top * parseFloat(el.dataset.parallax)}px)`;
+        });
+      }
       scrollVelocity += Math.abs(scrollTop - currentScrollY);
       currentScrollY = scrollTop;
     }, { passive: true });
@@ -558,9 +882,6 @@
 
     /* ═══════════════════════════════════════════════════════
        WATER RIPPLE — full-document seamless
-       Fixed viewport canvas. Simulation runs in a grid.
-       Base texture = full-document-height skin/leather noise.
-       Rendered each frame offset by scrollY for seamless scroll.
        ═══════════════════════════════════════════════════════ */
 
     const canvas = document.getElementById('bgCanvas');
@@ -592,7 +913,7 @@
       return v;
     }
 
-    /* ── Background texture (full document height) ── */
+    /* ── Background texture ── */
     let bgTexture = null, bgTexH = 0;
 
     function generateBgTexture() {
@@ -601,7 +922,7 @@
       const off = document.createElement('canvas');
       off.width = W; off.height = fullH;
       const octx = off.getContext('2d');
-      octx.fillStyle = '#f7f7f8';
+      octx.fillStyle = '#eaebf0';
       octx.fillRect(0, 0, W, fullH);
       const STRIP = 512;
       for (let sy = 0; sy < fullH; sy += STRIP) {
@@ -618,19 +939,19 @@
           const micro = (Math.random()-0.5)*1.2;
           const cx2=(nx-0.5)*2, cy2=(ny-0.5)*2;
           const vig=(cx2*cx2+cy2*cy2)*0.8;
-          const base=247;
+          const base=237;
           const lum=base+drift+mid+grain+micro-vig;
-          d[i]  =Math.max(240,Math.min(255,lum-0.3));
-          d[i+1]=Math.max(240,Math.min(255,lum));
-          d[i+2]=Math.max(241,Math.min(255,lum+0.5));
+          d[i]  =Math.max(228,Math.min(248,lum-1.2));
+          d[i+1]=Math.max(229,Math.min(249,lum-0.4));
+          d[i+2]=Math.max(233,Math.min(252,lum+1.5));
         }
         octx.putImageData(imgData, 0, sy);
       }
       bgTexture = off;
     }
 
-    /* ── Ripple simulation grid (viewport-sized) ── */
-    const SCALE = 3;          // each sim cell = 3×3 px
+    /* ── Ripple simulation grid ── */
+    const SCALE = 3;
     let rw, rh;
     let curr, prev;
 
@@ -642,7 +963,6 @@
     }
 
     function dropRipple(cx, cy, radius, strength) {
-      // cx, cy in viewport pixels
       const gx = (cx / SCALE) | 0;
       const gy = (cy / SCALE) | 0;
       const gr = Math.ceil(radius / SCALE);
@@ -666,7 +986,6 @@
       for (let y = 1; y < rh - 1; y++) {
         for (let x = 1; x < rw - 1; x++) {
           const i = y * rw + x;
-          // 8-neighbor kernel for smoother propagation
           const neighbors =
             curr[i - 1] + curr[i + 1] +
             curr[i - rw] + curr[i + rw] +
@@ -679,7 +998,7 @@
       curr = next;
     }
 
-    /* ── Mouse tracking for ripple ── */
+    /* ── Mouse tracking ── */
     let mouseX = -9999, mouseY = -9999;
     let lastDropX = -9999, lastDropY = -9999;
 
@@ -707,23 +1026,6 @@
     resize();
     window.addEventListener('resize', resize);
 
-    /* ── Offscreen buffer for reading texture pixels ── */
-    let texRead = null;
-
-    function getTexSlice() {
-      // Read the current viewport slice from bgTexture
-      if (!bgTexture) return null;
-      if (!texRead || texRead.width !== W || texRead.height !== H) {
-        texRead = document.createElement('canvas');
-        texRead.width = W;
-        texRead.height = H;
-      }
-      const tctx = texRead.getContext('2d');
-      const sTop = Math.min(Math.round(currentScrollY), Math.max(0, bgTexH - H));
-      tctx.drawImage(bgTexture, 0, sTop, W, H, 0, 0, W, H);
-      return tctx.getImageData(0, 0, W, H);
-    }
-
     let frameCount = 0;
 
     function frame() {
@@ -732,7 +1034,7 @@
 
       if (frameCount % 120 === 0) checkDocHeight();
 
-      /* ── Mouse drops ── */
+      /* Mouse drops */
       const ddx = mouseX - lastDropX, ddy = mouseY - lastDropY;
       const moveDist = Math.sqrt(ddx*ddx + ddy*ddy);
       if (moveDist > 8 && mouseX > 0) {
@@ -741,13 +1043,12 @@
         lastDropY = mouseY;
       }
 
-      /* ── Scroll-velocity drops ── */
+      /* Scroll-velocity drops */
       if (scrollVelocity > 3) {
         const sx = mouseX > 0 ? mouseX : W * 0.5;
         const sy = mouseY > 0 ? mouseY : H * 0.5;
         const str = Math.min(scrollVelocity * 0.004, 0.4);
         dropRipple(sx, sy, 50, str);
-        // Echo ripple offset
         dropRipple(
           sx + (Math.random() - 0.5) * 120,
           sy + (Math.random() - 0.5) * 80,
@@ -755,7 +1056,7 @@
         );
       }
 
-      /* ── Breathing pulses ── */
+      /* Breathing pulses */
       if (frameCount % 90 === 0) {
         dropRipple(
           W * (0.2 + Math.random() * 0.6),
@@ -765,12 +1066,11 @@
         );
       }
 
-      /* ── Step simulation ── */
       stepRipple();
 
-      /* ── Render displaced texture ── */
+      /* Render */
       if (!bgTexture) {
-        ctx.fillStyle = '#f7f7f8';
+        ctx.fillStyle = '#eaebf0';
         ctx.fillRect(0, 0, W, H);
         scrollVelocity *= 0.88;
         requestAnimationFrame(frame);
@@ -778,14 +1078,10 @@
       }
 
       const sTop = Math.min(Math.round(currentScrollY), Math.max(0, bgTexH - H));
-      // Draw base texture
       ctx.drawImage(bgTexture, 0, sTop, W, H, 0, 0, W, H);
 
-      // Apply displacement + shadow overlay
       const imgData = ctx.getImageData(0, 0, W, H);
       const src = imgData.data;
-
-      // Read source slice for displacement sampling
       const srcImg = ctx.getImageData(0, 0, W, H);
       const srcD = srcImg.data;
 
@@ -800,11 +1096,9 @@
           const val = curr[gi];
           if (Math.abs(val) < 0.003) continue;
 
-          // Gradient for displacement
           const gradX = curr[gi + 1] - curr[gi - 1];
           const gradY = curr[gi + rw] - curr[gi - rw];
 
-          // Displacement offset
           const dispStr = 8;
           const ox = Math.round(gradX * dispStr);
           const oy = Math.round(gradY * dispStr);
@@ -819,9 +1113,7 @@
           src[dstIdx + 1] = srcD[srcIdx + 1];
           src[dstIdx + 2] = srcD[srcIdx + 2];
 
-          // Directional shadow
           const shadow = (gradX * 1.8 + gradY * 1.2);
-          // Depth shadow
           const depth = val * -2.0;
           const totalShade = shadow + depth;
 
