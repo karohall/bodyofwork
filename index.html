@@ -43,6 +43,43 @@
       pointer-events: none;
     }
 
+    #textCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .wavy-hide {
+      color: transparent !important;
+      -webkit-text-fill-color: transparent !important;
+    }
+    .wavy-hide::selection { color: transparent; }
+
+    /* Profiling HUD — toggle with P */
+    #profileHud {
+      position: fixed;
+      bottom: 12px; right: 12px;
+      background: rgba(18, 20, 26, 0.88);
+      color: #d6e2ff;
+      font: 11px/1.45 ui-monospace, "SF Mono", Menlo, monospace;
+      padding: 9px 12px;
+      border-radius: 6px;
+      z-index: 12000;
+      pointer-events: none;
+      white-space: pre;
+      letter-spacing: 0.02em;
+      display: none;
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    }
+    #profileHud.visible { display: block; }
+    #profileHud .lbl { color: #8a96b0; }
+    #profileHud .hot { color: #ffb38a; }
+
     .cursor {
       position: fixed;
       width: 14px;
@@ -564,6 +601,8 @@
 <body>
 
   <canvas id="bgCanvas"></canvas>
+  <canvas id="textCanvas"></canvas>
+  <div id="profileHud"></div>
   <div class="cursor" id="cursor"></div>
   <div class="scroll-progress" id="scrollProgress"></div>
 
@@ -758,7 +797,9 @@
     </div>
   </footer>
 
-  <script>
+  <script type="module">
+    import { prepareWithSegments, layoutWithLines } from 'https://esm.sh/@chenglou/pretext@0.0.6';
+
     /* ── Cursor ── */
     const cursor = document.getElementById('cursor');
     let cursorX = -9999, cursorY = -9999, currentCX = 0, currentCY = 0;
@@ -885,8 +926,279 @@
        ═══════════════════════════════════════════════════════ */
 
     const canvas = document.getElementById('bgCanvas');
-    const ctx = canvas.getContext('2d');
+
+    // Prefer WebGL2 — moves the entire ripple displacement pipeline to a
+    // fragment shader (zero per-frame GPU↔CPU pixel transfer). The CPU
+    // ripple field is still maintained because the text waver samples it
+    // directly.  Falls back to canvas2d if WebGL2 is unavailable.
+    let useWebGL = false;
+    let gl = null;
+    let ctx = null;
+    {
+      const gl2 = canvas.getContext('webgl2', { alpha: false, premultipliedAlpha: false, antialias: false, preserveDrawingBuffer: false });
+      if (gl2) { gl = gl2; useWebGL = true; }
+      else { ctx = canvas.getContext('2d'); }
+    }
     let W, H;
+
+    /* ── WebGL2 ripple/noise renderer ── */
+    let glProg = null;
+    let glNoiseProg = null;       // one-shot shader that bakes the noise tex
+    let glRippleTex = null;
+    let glNoiseTex = null;
+    let glNoiseFBO = null;
+    let glNoiseReady = false;
+    let glNoiseW = 0, glNoiseH = 0;
+    let glRippleW = 0, glRippleH = 0;
+    let glLocs = {};
+    let glNoiseLocs = {};
+
+    const FS_SRC = `#version 300 es
+precision highp float;
+out vec4 outColor;
+
+uniform sampler2D u_noise;
+uniform sampler2D u_ripple;
+uniform vec2 u_resolution;
+uniform vec2 u_noiseSize;
+uniform float u_scrollY;
+uniform float u_dispStr;
+
+void main() {
+  // Canvas pixel position with y=0 at top (matching CPU code)
+  vec2 px = vec2(gl_FragCoord.x, u_resolution.y - gl_FragCoord.y);
+  vec2 rippleUV = px / u_resolution;
+  vec2 rippleTexel = 1.0 / vec2(textureSize(u_ripple, 0));
+
+  float val = texture(u_ripple, rippleUV).r;
+  float vL  = texture(u_ripple, rippleUV - vec2(rippleTexel.x, 0.0)).r;
+  float vR  = texture(u_ripple, rippleUV + vec2(rippleTexel.x, 0.0)).r;
+  float vU  = texture(u_ripple, rippleUV - vec2(0.0, rippleTexel.y)).r;
+  float vD  = texture(u_ripple, rippleUV + vec2(0.0, rippleTexel.y)).r;
+  vec2 grad = vec2(vR - vL, vD - vU);
+
+  vec2 srcPx = px + grad * u_dispStr;
+  vec2 noiseUV = vec2(srcPx.x, srcPx.y + u_scrollY) / u_noiseSize;
+  vec3 base = texture(u_noise, noiseUV).rgb;
+
+  float shadow = grad.x * 1.8 + grad.y * 1.2;
+  float depth = val * -2.0;
+  float totalShade = (shadow + depth) * (8.0 / 255.0);
+
+  base = clamp(base - totalShade, 0.0, 1.0);
+  outColor = vec4(base, 1.0);
+}`;
+
+    const VS_SRC = `#version 300 es
+in vec2 a_pos;
+void main() { gl_Position = vec4(a_pos, 0, 1); }`;
+
+    /* One-shot noise-baking shader. Renders the same look as the original
+       CPU Perlin pass but in a single GPU draw call: ~sub-millisecond for
+       any viewport. Invoked once at init and once per resize. */
+    const FS_NOISE_SRC = `#version 300 es
+precision highp float;
+out vec4 outColor;
+uniform vec2 u_size;
+
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float noise2d(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  float a = hash(i + vec2(0.0, 0.0)) * 2.0 - 1.0;
+  float b = hash(i + vec2(1.0, 0.0)) * 2.0 - 1.0;
+  float c = hash(i + vec2(0.0, 1.0)) * 2.0 - 1.0;
+  float d = hash(i + vec2(1.0, 1.0)) * 2.0 - 1.0;
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+float fbm3(vec2 p) {
+  float v = 0.0;
+  float a = 0.5;
+  float f = 1.0;
+  for (int i = 0; i < 3; i++) {
+    v += a * noise2d(p * f);
+    a *= 0.5;
+    f *= 2.0;
+  }
+  return v;
+}
+
+void main() {
+  // gl_FragCoord.y is bottom-up; we want canvas/document y-down.
+  vec2 px = vec2(gl_FragCoord.x, u_size.y - gl_FragCoord.y);
+  float nx = px.x / u_size.x;
+  float ny = px.y / u_size.y;
+
+  float drift = fbm3(vec2(nx * 2.5, ny * 5.0)) * 2.5;
+  float mid   = fbm3(vec2(px.x * 0.008 + 3.7, px.y * 0.005 + 1.2)) * 1.5;
+  float grain = noise2d(vec2(px.x * 0.04, px.y * 0.04)) * 0.8;
+  float micro = (hash(px + vec2(0.13, 0.71)) - 0.5) * 1.2;
+
+  vec2 c = (vec2(nx, ny) - 0.5) * 2.0;
+  float vig = dot(c, c) * 0.8;
+
+  float base = 237.0;
+  float lum = base + drift + mid + grain + micro - vig;
+
+  float r = clamp(lum - 1.2, 228.0, 248.0) / 255.0;
+  float g = clamp(lum - 0.4, 229.0, 249.0) / 255.0;
+  float bl = clamp(lum + 1.5, 233.0, 252.0) / 255.0;
+  outColor = vec4(r, g, bl, 1.0);
+}`;
+
+    function initWebGL() {
+      if (!gl) return false;
+      const compile = (type, src) => {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+          console.error('shader compile:', gl.getShaderInfoLog(s));
+          return null;
+        }
+        return s;
+      };
+      const vs = compile(gl.VERTEX_SHADER, VS_SRC);
+      const fs = compile(gl.FRAGMENT_SHADER, FS_SRC);
+      const noiseFs = compile(gl.FRAGMENT_SHADER, FS_NOISE_SRC);
+      if (!vs || !fs || !noiseFs) return false;
+
+      glProg = gl.createProgram();
+      gl.attachShader(glProg, vs);
+      gl.attachShader(glProg, fs);
+      gl.bindAttribLocation(glProg, 0, 'a_pos');
+      gl.linkProgram(glProg);
+      if (!gl.getProgramParameter(glProg, gl.LINK_STATUS)) {
+        console.error('display link:', gl.getProgramInfoLog(glProg));
+        return false;
+      }
+
+      glNoiseProg = gl.createProgram();
+      gl.attachShader(glNoiseProg, vs);
+      gl.attachShader(glNoiseProg, noiseFs);
+      gl.bindAttribLocation(glNoiseProg, 0, 'a_pos');
+      gl.linkProgram(glNoiseProg);
+      if (!gl.getProgramParameter(glNoiseProg, gl.LINK_STATUS)) {
+        console.error('noise link:', gl.getProgramInfoLog(glNoiseProg));
+        return false;
+      }
+
+      // Fullscreen triangle (bigger than viewport, gets clipped — saves a vertex).
+      const vao = gl.createVertexArray();
+      gl.bindVertexArray(vao);
+      const buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(0);
+      gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+      glLocs.u_noise      = gl.getUniformLocation(glProg, 'u_noise');
+      glLocs.u_ripple     = gl.getUniformLocation(glProg, 'u_ripple');
+      glLocs.u_resolution = gl.getUniformLocation(glProg, 'u_resolution');
+      glLocs.u_noiseSize  = gl.getUniformLocation(glProg, 'u_noiseSize');
+      glLocs.u_scrollY    = gl.getUniformLocation(glProg, 'u_scrollY');
+      glLocs.u_dispStr    = gl.getUniformLocation(glProg, 'u_dispStr');
+
+      glNoiseLocs.u_size  = gl.getUniformLocation(glNoiseProg, 'u_size');
+
+      glNoiseFBO = gl.createFramebuffer();
+      return true;
+    }
+
+    // One-shot GPU noise bake: fills glNoiseTex with the same look as the
+    // CPU pipeline, in a single draw call. Returns true on success.
+    function bakeNoiseGPU(noiseW, noiseH) {
+      ensureNoiseTexture(noiseW, noiseH);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, glNoiseFBO);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glNoiseTex, 0);
+      const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+      if (status !== gl.FRAMEBUFFER_COMPLETE) {
+        console.error('noise FBO incomplete:', status);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        return false;
+      }
+      gl.viewport(0, 0, noiseW, noiseH);
+      gl.useProgram(glNoiseProg);
+      gl.uniform2f(glNoiseLocs.u_size, noiseW, noiseH);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      glNoiseReady = true;
+      return true;
+    }
+
+    function ensureRippleTexture() {
+      if (!useWebGL) return;
+      if (glRippleTex && glRippleW === rw && glRippleH === rh) return;
+      if (glRippleTex) gl.deleteTexture(glRippleTex);
+      glRippleTex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, glRippleTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, rw, rh, 0, gl.RED, gl.FLOAT, null);
+      // NEAREST: matches the existing CPU code which floors to the grid cell.
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      glRippleW = rw; glRippleH = rh;
+    }
+
+    function ensureNoiseTexture(noiseW, noiseH) {
+      if (!useWebGL) return;
+      if (glNoiseTex && glNoiseW === noiseW && glNoiseH === noiseH) {
+        // Reuse existing texture, just rewrite content.
+        return;
+      }
+      if (glNoiseTex) gl.deleteTexture(glNoiseTex);
+      glNoiseTex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, glNoiseTex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, noiseW, noiseH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      glNoiseW = noiseW; glNoiseH = noiseH;
+      glNoiseReady = false;
+    }
+
+    function uploadNoiseStrip(yOffset, stripData, stripW, stripH) {
+      if (!useWebGL) return;
+      gl.bindTexture(gl.TEXTURE_2D, glNoiseTex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, yOffset, stripW, stripH, gl.RGBA, gl.UNSIGNED_BYTE, stripData);
+    }
+
+    function renderWebGL() {
+      // Upload current ripple field
+      ensureRippleTexture();
+      gl.bindTexture(gl.TEXTURE_2D, glRippleTex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, rw, rh, gl.RED, gl.FLOAT, curr);
+
+      gl.viewport(0, 0, W, H);
+      if (!glNoiseReady) {
+        gl.clearColor(234/255, 235/255, 240/255, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        return;
+      }
+      gl.useProgram(glProg);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, glNoiseTex);
+      gl.uniform1i(glLocs.u_noise, 0);
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, glRippleTex);
+      gl.uniform1i(glLocs.u_ripple, 1);
+      gl.uniform2f(glLocs.u_resolution, W, H);
+      gl.uniform2f(glLocs.u_noiseSize, glNoiseW, glNoiseH);
+      gl.uniform1f(glLocs.u_scrollY, currentScrollY);
+      gl.uniform1f(glLocs.u_dispStr, 8.0);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
 
     /* ── Perlin noise ── */
     const PERM = new Uint8Array(512);
@@ -913,41 +1225,121 @@
       return v;
     }
 
-    /* ── Background texture ── */
+    /* ── Background texture ──
+       Generated once, asynchronously, in small time-budgeted chunks per
+       animation frame so the main thread never freezes. The previous
+       texture (if any) keeps rendering until the new one is complete,
+       then we swap atomically. */
     let bgTexture = null, bgTexH = 0;
+    let bgTexGenJob = null;
+
+    function startBgTextureGen() {
+      const fullH = Math.max(document.documentElement.scrollHeight, H);
+      if (useWebGL) {
+        // GPU bakes the noise texture in a single draw call. No async job
+        // needed — completes synchronously in well under a millisecond.
+        if (bakeNoiseGPU(W, fullH)) {
+          bgTexture = true;     // sentinel "ready"
+          bgTexH = fullH;
+          bgTexGenJob = null;
+          return;
+        }
+        // If the FBO bake failed for any reason, fall through to the CPU
+        // path so something still renders.
+        bgTexGenJob = {
+          isWebGL: true,
+          fullH, sy: 0, STRIP: 256,
+        };
+      } else {
+        const off = document.createElement('canvas');
+        off.width = W; off.height = fullH;
+        const octx = off.getContext('2d');
+        octx.fillStyle = '#eaebf0';
+        octx.fillRect(0, 0, W, fullH);
+        bgTexGenJob = {
+          isWebGL: false,
+          off, octx, fullH,
+          sy: 0,
+          STRIP: 256,
+        };
+      }
+    }
+
+    function tickBgTextureGen() {
+      const job = bgTexGenJob;
+      if (!job) return;
+      const start = performance.now();
+      // Process strips until ~5 ms of frame budget is consumed, then yield.
+      while (job.sy < job.fullH && (performance.now() - start) < 5) {
+        const sh = Math.min(job.STRIP, job.fullH - job.sy);
+        const sy = job.sy;
+        const fullH = job.fullH;
+
+        if (job.isWebGL) {
+          // Generate strip pixels into a typed array, then upload to GPU
+          // via texSubImage2D.  Skips the 2D-canvas round-trip entirely.
+          const stripBytes = W * sh * 4;
+          const d = new Uint8Array(stripBytes);
+          for (let i = 0; i < stripBytes; i += 4) {
+            const pi = i / 4;
+            const px = pi % W;
+            const py = sy + ((pi / W) | 0);
+            const nx = px / W, ny = py / fullH;
+            const drift = fbm(nx*2.5, ny*5.0, 3)*2.5;
+            const mid   = fbm(px*0.008+3.7, py*0.005+1.2, 3)*1.5;
+            const grain = noise2d(px*0.04, py*0.04)*0.8;
+            const micro = (Math.random()-0.5)*1.2;
+            const cx2=(nx-0.5)*2, cy2=(ny-0.5)*2;
+            const vig=(cx2*cx2+cy2*cy2)*0.8;
+            const base=237;
+            const lum=base+drift+mid+grain+micro-vig;
+            d[i]  =Math.max(228,Math.min(248,lum-1.2));
+            d[i+1]=Math.max(229,Math.min(249,lum-0.4));
+            d[i+2]=Math.max(233,Math.min(252,lum+1.5));
+            d[i+3]=255;
+          }
+          uploadNoiseStrip(sy, d, W, sh);
+        } else {
+          const imgData = job.octx.getImageData(0, sy, W, sh);
+          const d = imgData.data;
+          for (let i = 0; i < d.length; i += 4) {
+            const pi = i / 4;
+            const px = pi % W;
+            const py = sy + ((pi / W) | 0);
+            const nx = px / W, ny = py / fullH;
+            const drift = fbm(nx*2.5, ny*5.0, 3)*2.5;
+            const mid   = fbm(px*0.008+3.7, py*0.005+1.2, 3)*1.5;
+            const grain = noise2d(px*0.04, py*0.04)*0.8;
+            const micro = (Math.random()-0.5)*1.2;
+            const cx2=(nx-0.5)*2, cy2=(ny-0.5)*2;
+            const vig=(cx2*cx2+cy2*cy2)*0.8;
+            const base=237;
+            const lum=base+drift+mid+grain+micro-vig;
+            d[i]  =Math.max(228,Math.min(248,lum-1.2));
+            d[i+1]=Math.max(229,Math.min(249,lum-0.4));
+            d[i+2]=Math.max(233,Math.min(252,lum+1.5));
+          }
+          job.octx.putImageData(imgData, 0, sy);
+        }
+        job.sy += job.STRIP;
+      }
+      if (job.sy >= job.fullH) {
+        if (job.isWebGL) {
+          glNoiseReady = true;
+          bgTexH = job.fullH;
+          bgTexture = true; // sentinel "ready" for HUD / fallback checks
+        } else {
+          bgTexture = job.off;
+          bgTexH = job.fullH;
+        }
+        bgTexGenJob = null;
+      }
+    }
 
     function generateBgTexture() {
-      const fullH = Math.max(document.documentElement.scrollHeight, H);
-      bgTexH = fullH;
-      const off = document.createElement('canvas');
-      off.width = W; off.height = fullH;
-      const octx = off.getContext('2d');
-      octx.fillStyle = '#eaebf0';
-      octx.fillRect(0, 0, W, fullH);
-      const STRIP = 512;
-      for (let sy = 0; sy < fullH; sy += STRIP) {
-        const sh = Math.min(STRIP, fullH - sy);
-        const imgData = octx.getImageData(0, sy, W, sh);
-        const d = imgData.data;
-        for (let i = 0; i < d.length; i += 4) {
-          const px = (i/4) % W;
-          const py = sy + ((i/4)/W|0);
-          const nx = px/W, ny = py/fullH;
-          const drift = fbm(nx*2.5, ny*5.0, 3)*2.5;
-          const mid   = fbm(px*0.008+3.7, py*0.005+1.2, 3)*1.5;
-          const grain = noise2d(px*0.04, py*0.04)*0.8;
-          const micro = (Math.random()-0.5)*1.2;
-          const cx2=(nx-0.5)*2, cy2=(ny-0.5)*2;
-          const vig=(cx2*cx2+cy2*cy2)*0.8;
-          const base=237;
-          const lum=base+drift+mid+grain+micro-vig;
-          d[i]  =Math.max(228,Math.min(248,lum-1.2));
-          d[i+1]=Math.max(229,Math.min(249,lum-0.4));
-          d[i+2]=Math.max(233,Math.min(252,lum+1.5));
-        }
-        octx.putImageData(imgData, 0, sy);
-      }
-      bgTexture = off;
+      // Public entry point — kicks off async generation. Existing texture
+      // (if any) keeps rendering until the new one finishes.
+      startBgTextureGen();
     }
 
     /* ── Ripple simulation grid ── */
@@ -1016,21 +1408,126 @@
       if (Math.abs(h - lastDocH) > 100) { lastDocH = h; generateBgTexture(); }
     }
 
+    // Declared before resize() is called so it isn't in the TDZ when
+    // resize() resets it on init.
+    let frameCount = 0;
+    let lastBgScrollY = -1;
+    // Tightened: cells below this magnitude no longer count as "active". Bumps
+    // the bbox down faster as ripples decay → smaller getImageData regions.
+    const RIPPLE_THRESH = 0.008;
+    const PIXEL_MARGIN = 12;   // > max practical displacement
+
+    /* ── Profiling HUD ──
+       Toggle with P. Shows rolling per-loop timings, FPS, ripple bbox area
+       and bytes touched by getImageData/putImageData, characters drawn, etc. */
+    const profileHud = document.getElementById('profileHud');
+    let profileEnabled = false;
+    const PROFILE_WINDOW = 60;
+    const bgTimes = new Float32Array(PROFILE_WINDOW);
+    const txtTimes = new Float32Array(PROFILE_WINDOW);
+    const intervals = new Float32Array(PROFILE_WINDOW);
+    let bgIdx = 0, txtIdx = 0, intIdx = 0;
+    let lastFrameAt = performance.now();
+    let bgT0 = 0;
+    let lastBgState = 'init';
+    let lastBboxArea = 0;       // active ripple region in pixels
+    let lastBboxBytes = 0;       // bytes touched by getImageData+putImageData
+    let lastTxtState = 'init';
+    let lastCharsDrawn = 0;
+    let lastTxtVisibleItems = 0;
+
+    function endBg(state) {
+      bgTimes[bgIdx] = performance.now() - bgT0;
+      bgIdx = (bgIdx + 1) % PROFILE_WINDOW;
+      lastBgState = state;
+    }
+
+    function avg(arr) {
+      let s = 0; for (let i = 0; i < arr.length; i++) s += arr[i];
+      return s / arr.length;
+    }
+    function maxArr(arr) {
+      let m = 0; for (let i = 0; i < arr.length; i++) if (arr[i] > m) m = arr[i];
+      return m;
+    }
+
+    window.addEventListener('keydown', e => {
+      if ((e.key === 'p' || e.key === 'P') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        profileEnabled = !profileEnabled;
+        profileHud.classList.toggle('visible', profileEnabled);
+      }
+    });
+
+    let lastHudTime = 0;
+    function updateHud() {
+      if (!profileEnabled) return;
+      const now = performance.now();
+      if (now - lastHudTime < 200) return;
+      lastHudTime = now;
+      const intAvg = avg(intervals);
+      const fps = intAvg > 0.01 ? (1000 / intAvg) : 0;
+      const bgAvg = avg(bgTimes);
+      const bgMax = maxArr(bgTimes);
+      const txtAvg = avg(txtTimes);
+      const txtMax = maxArr(txtTimes);
+      const bgBudget = bgAvg > 8 ? 'hot' : 'lbl';
+      const txtBudget = txtAvg > 8 ? 'hot' : 'lbl';
+      profileHud.innerHTML =
+        `<span class="lbl">FPS    </span>${fps.toFixed(1).padStart(5)}\n` +
+        `<span class="lbl">frame  </span>${intAvg.toFixed(1).padStart(5)} ms\n` +
+        `<span class="${bgBudget}">bg     </span>${bgAvg.toFixed(2).padStart(5)} ms  max ${bgMax.toFixed(1)}  ${lastBgState}\n` +
+        `<span class="${txtBudget}">text   </span>${txtAvg.toFixed(2).padStart(5)} ms  max ${txtMax.toFixed(1)}  ${lastTxtState}\n` +
+        `<span class="lbl">bbox   </span>${(lastBboxArea/1000).toFixed(1).padStart(5)} k px (${(lastBboxBytes/1024).toFixed(0)} KB)\n` +
+        `<span class="lbl">chars  </span>${String(lastCharsDrawn).padStart(5)}  items ${lastTxtVisibleItems}\n` +
+        `<span class="lbl">tex    </span>${bgTexture ? 'ready' : (bgTexGenJob ? `gen ${(bgTexGenJob.sy / bgTexGenJob.fullH * 100).toFixed(0)}%` : 'pending')}\n` +
+        `<span class="lbl">(p toggles)</span>`;
+    }
+
+    let _webglInited = false;
     function resize() {
       W = canvas.width  = window.innerWidth;
       H = canvas.height = window.innerHeight;
       initRipple();
+      if (useWebGL) {
+        if (!_webglInited) {
+          if (!initWebGL()) {
+            // Init failed; fall back to 2D
+            useWebGL = false;
+            ctx = canvas.getContext('2d');
+          } else {
+            _webglInited = true;
+          }
+        }
+        if (useWebGL) {
+          ensureRippleTexture();
+          glNoiseReady = false;
+        }
+      }
+      // Width changed: drop the old texture so it isn't stretched while the
+      // new one is being generated. The flat-fill fallback runs in frame()
+      // until tickBgTextureGen() finishes the new texture.
+      bgTexture = null;
+      bgTexH = 0;
+      lastBgScrollY = -1;
       generateBgTexture();
     }
 
     resize();
     window.addEventListener('resize', resize);
 
-    let frameCount = 0;
-
     function frame() {
+      const _now = performance.now();
+      intervals[intIdx] = _now - lastFrameAt;
+      intIdx = (intIdx + 1) % PROFILE_WINDOW;
+      lastFrameAt = _now;
+      bgT0 = _now;
+      updateHud();
+
       frameCount++;
       time += 0.016;
+
+      // Process some chunks of the async texture generation, if any.
+      tickBgTextureGen();
 
       if (frameCount % 120 === 0) checkDocHeight();
 
@@ -1068,33 +1565,109 @@
 
       stepRipple();
 
-      /* Render */
-      if (!bgTexture) {
-        ctx.fillStyle = '#eaebf0';
-        ctx.fillRect(0, 0, W, H);
+      /* WebGL render path: full ripple displacement happens in a fragment
+         shader. No bbox tracking, no getImageData/putImageData needed. */
+      if (useWebGL) {
+        renderWebGL();
         scrollVelocity *= 0.88;
+        lastBboxArea = 0;
+        lastBboxBytes = 0;
+        endBg(glNoiseReady ? 'gl' : 'gen');
         requestAnimationFrame(frame);
         return;
       }
 
+      /* Canvas2D fallback path */
+      if (!bgTexture) {
+        ctx.fillStyle = '#eaebf0';
+        ctx.fillRect(0, 0, W, H);
+        scrollVelocity *= 0.88;
+        endBg('flat');
+        requestAnimationFrame(frame);
+        return;
+      }
+
+      // Single pass over the (small) ripple grid that computes both
+      // "is anything active?" and the bbox of active cells. This lets us
+      // (a) skip the entire pixel pipeline when nothing is moving and
+      // (b) restrict getImageData/putImageData to only the active region.
+      let bx0 = rw, bx1 = -1, by0 = rh, by1 = -1;
+      for (let y = 0; y < rh; y++) {
+        const row = y * rw;
+        for (let x = 0; x < rw; x++) {
+          const v = curr[row + x];
+          if (v > RIPPLE_THRESH || v < -RIPPLE_THRESH) {
+            if (x < bx0) bx0 = x;
+            if (x > bx1) bx1 = x;
+            if (y < by0) by0 = y;
+            if (y > by1) by1 = y;
+          }
+        }
+      }
+      const rippleActive = bx1 >= 0;
+      const scrollChanged = currentScrollY !== lastBgScrollY;
+
+      // IDLE SKIP: nothing is moving, last frame's pixels are still correct.
+      if (!rippleActive && !scrollChanged) {
+        scrollVelocity *= 0.88;
+        lastBboxArea = 0; lastBboxBytes = 0;
+        endBg('idle');
+        requestAnimationFrame(frame);
+        return;
+      }
+
+      // Always blit fresh texture before any displacement.
       const sTop = Math.min(Math.round(currentScrollY), Math.max(0, bgTexH - H));
       ctx.drawImage(bgTexture, 0, sTop, W, H, 0, 0, W, H);
+      lastBgScrollY = currentScrollY;
 
-      const imgData = ctx.getImageData(0, 0, W, H);
+      // Scroll happened but no ripple activity: clean texture is enough.
+      if (!rippleActive) {
+        scrollVelocity *= 0.88;
+        lastBboxArea = 0; lastBboxBytes = 0;
+        endBg('scroll');
+        requestAnimationFrame(frame);
+        return;
+      }
+
+      // BBOX-RESTRICTED PIXEL PIPELINE: getImageData / putImageData over
+      // only the active rectangle, with a margin so source displacement
+      // reads stay inside the bbox.
+      const px0 = Math.max(0, bx0 * SCALE - PIXEL_MARGIN);
+      const px1 = Math.min(W, (bx1 + 1) * SCALE + PIXEL_MARGIN);
+      const py0 = Math.max(0, by0 * SCALE - PIXEL_MARGIN);
+      const py1 = Math.min(H, (by1 + 1) * SCALE + PIXEL_MARGIN);
+      const pw = px1 - px0;
+      const ph = py1 - py0;
+      if (pw <= 0 || ph <= 0) {
+        scrollVelocity *= 0.88;
+        lastBboxArea = 0; lastBboxBytes = 0;
+        endBg('empty');
+        requestAnimationFrame(frame);
+        return;
+      }
+
+      const imgData = ctx.getImageData(px0, py0, pw, ph);
       const src = imgData.data;
-      const srcImg = ctx.getImageData(0, 0, W, H);
-      const srcD = srcImg.data;
+      // Clone in-memory for the source buffer instead of doing a 2nd
+      // getImageData. Memory copy is dramatically cheaper than another
+      // GPU→CPU sync of the same pixels.
+      const srcD = new Uint8ClampedArray(src);
+      lastBboxArea = pw * ph;
+      // One getImageData read + one putImageData write of pw*ph*4 bytes each.
+      lastBboxBytes = pw * ph * 4 * 2;
 
-      for (let y = 0; y < H; y++) {
+      for (let y = py0; y < py1; y++) {
         const gy = (y / SCALE) | 0;
         if (gy < 1 || gy >= rh - 1) continue;
-        for (let x = 0; x < W; x++) {
+        const localY = y - py0;
+        for (let x = px0; x < px1; x++) {
           const gx = (x / SCALE) | 0;
           if (gx < 1 || gx >= rw - 1) continue;
 
           const gi = gy * rw + gx;
           const val = curr[gi];
-          if (Math.abs(val) < 0.003) continue;
+          if (val > -RIPPLE_THRESH && val < RIPPLE_THRESH) continue;
 
           const gradX = curr[gi + 1] - curr[gi - 1];
           const gradY = curr[gi + rw] - curr[gi - rw];
@@ -1103,11 +1676,13 @@
           const ox = Math.round(gradX * dispStr);
           const oy = Math.round(gradY * dispStr);
 
-          const sx2 = Math.max(0, Math.min(W-1, x + ox));
-          const sy2 = Math.max(0, Math.min(H-1, y + oy));
+          // Source pixel in viewport coords, clamped to bbox so it stays
+          // within the smaller ImageData buffer.
+          const sx2 = Math.max(px0, Math.min(px1 - 1, x + ox));
+          const sy2 = Math.max(py0, Math.min(py1 - 1, y + oy));
 
-          const srcIdx = (sy2 * W + sx2) * 4;
-          const dstIdx = (y * W + x) * 4;
+          const srcIdx = ((sy2 - py0) * pw + (sx2 - px0)) * 4;
+          const dstIdx = (localY * pw + (x - px0)) * 4;
 
           src[dstIdx]     = srcD[srcIdx];
           src[dstIdx + 1] = srcD[srcIdx + 1];
@@ -1123,13 +1698,409 @@
         }
       }
 
-      ctx.putImageData(imgData, 0, 0);
+      ctx.putImageData(imgData, px0, py0);
 
       scrollVelocity *= 0.88;
+      endBg('ripple');
       requestAnimationFrame(frame);
     }
 
     requestAnimationFrame(frame);
+
+    /* ═══════════════════════════════════════════════════════
+       PRETEXT TEXT-AS-WATER
+       Each grapheme is laid out by pretext, then displaced
+       and rotated by the same ripple field that warps the bg.
+       ═══════════════════════════════════════════════════════ */
+
+    const textCanvas = document.getElementById('textCanvas');
+    const tctx = textCanvas.getContext('2d');
+    let TW = 0, TH = 0, TDPR = 1;
+
+    function resizeTextCanvas() {
+      TDPR = Math.min(window.devicePixelRatio || 1, 2);
+      TW = window.innerWidth;
+      TH = window.innerHeight;
+      textCanvas.width = Math.round(TW * TDPR);
+      textCanvas.height = Math.round(TH * TDPR);
+      textCanvas.style.width = TW + 'px';
+      textCanvas.style.height = TH + 'px';
+      tctx.setTransform(TDPR, 0, 0, TDPR, 0, 0);
+    }
+    resizeTextCanvas();
+
+    const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+    /* Selectors of all visible text we want to wave. */
+    const WAVY_SELECTOR = [
+      '.hero-title', '.hero-title em',
+      '.section-title', '.section-desc', '.glass-tag',
+      '.section-link', '.back-link', '.section-number',
+      '.nav-logo', '.nav-links a', '.nav-location',
+      '.subpage-header h1', '.subpage-header p',
+      '.subpage-card h3', '.subpage-card p', '.subpage-card .card-num',
+      '.footer-logo', '.footer-left p', '.footer-right a'
+    ].join(',');
+
+    /* Cached per-element layout (computed once per page-state). */
+    let textItems = [];
+    /* Off-screen 2D context for measuring grapheme widths. */
+    const measureCanvas = document.createElement('canvas');
+    const mctx = measureCanvas.getContext('2d');
+
+    function buildFontString(cs) {
+      // Canvas font shorthand: style weight size family
+      const style = (cs.fontStyle && cs.fontStyle !== 'normal') ? cs.fontStyle + ' ' : '';
+      const weight = (cs.fontWeight && cs.fontWeight !== 'normal') ? cs.fontWeight + ' ' : '';
+      return `${style}${weight}${cs.fontSize} ${cs.fontFamily}`;
+    }
+
+    function isElementInActivePage(el) {
+      // Skip elements inside subpages that aren't currently active.
+      const sub = el.closest('.subpage');
+      if (sub) return sub.classList.contains('active');
+      // mainPage is hidden when a subpage is active; check it.
+      const main = el.closest('#mainPage');
+      if (main) return main.style.display !== 'none';
+      return true;
+    }
+
+    function buildTextItems() {
+      // Remove old wavy markers.
+      document.querySelectorAll('.wavy-hide').forEach(el => el.classList.remove('wavy-hide'));
+      textItems = [];
+
+      const elements = Array.from(document.querySelectorAll(WAVY_SELECTOR));
+
+      // Outer-loop: only top-level wavy elements; .hero-title em is handled by walker.
+      // We deduplicate by skipping elements whose ancestor is also in the set.
+      const elemSet = new Set(elements);
+      const topElems = elements.filter(el => {
+        let p = el.parentElement;
+        while (p) { if (elemSet.has(p)) return false; p = p.parentElement; }
+        return true;
+      });
+
+      for (const el of topElems) {
+        if (!isElementInActivePage(el)) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 1) continue;
+
+        const cs = getComputedStyle(el);
+        const baseFont = buildFontString(cs);
+        const baseColor = cs.color;
+        const textAlign = cs.textAlign;
+        const lh = parseFloat(cs.lineHeight) || (parseFloat(cs.fontSize) * 1.2);
+        const containerWidth = rect.width;
+
+        // Walk text nodes; tag each with parent style (handles <em>, etc).
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+          acceptNode: n => n.nodeValue.length ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+        });
+        let combined = '';
+        const charMeta = [];        // parallel to graphemes of `combined`
+        const charGlyphs = [];      // the grapheme strings, parallel to charMeta
+        let node;
+        while ((node = walker.nextNode())) {
+          const pcs = getComputedStyle(node.parentElement);
+          const font = buildFontString(pcs);
+          const color = pcs.color;
+          const text = node.nodeValue;
+          combined += text;
+          for (const seg of segmenter.segment(text)) {
+            charMeta.push({ font, color });
+            charGlyphs.push(seg.segment);
+          }
+        }
+        if (!combined.trim()) continue;
+
+        // Pretext: proper line breaking that respects bidi/whitespace rules.
+        let lines;
+        try {
+          const prepared = prepareWithSegments(combined, baseFont);
+          const result = layoutWithLines(prepared, containerWidth, lh);
+          lines = result.lines;
+        } catch (e) {
+          continue;
+        }
+
+        // Walk each pretext line, align with original graphemes (skipping whitespace
+        // pretext drops at soft-wrap boundaries), and measure glyph widths in true font.
+        const renderLines = [];
+        let metaIdx = 0;
+        for (let li = 0; li < lines.length; li++) {
+          const line = lines[li];
+          const lineGraphemes = Array.from(segmenter.segment(line.text)).map(s => s.segment);
+
+          // Re-sync metaIdx to first non-whitespace grapheme that matches the line start
+          // (between lines, pretext may have dropped one or more whitespace graphemes).
+          if (li > 0 && lineGraphemes.length > 0) {
+            const firstNonWS = lineGraphemes.find(g => !/^\s+$/.test(g)) ?? lineGraphemes[0];
+            while (
+              metaIdx < charGlyphs.length &&
+              charGlyphs[metaIdx] !== firstNonWS &&
+              /^\s+$/.test(charGlyphs[metaIdx])
+            ) metaIdx++;
+          }
+
+          // Build chars + group consecutive same-(font,color) chars into "runs".
+          // Render iterates runs and sets canvas state once per run instead of
+          // once per character — fillStyle / font assignments are surprisingly
+          // expensive on canvas2d.
+          const chars = [];
+          const runs = [];
+          let curRun = null;
+          let xCursor = 0;
+          let lineWidth = 0;
+          for (let gi = 0; gi < lineGraphemes.length; gi++) {
+            const g = lineGraphemes[gi];
+            const meta = charMeta[Math.min(metaIdx, charMeta.length - 1)] || { font: baseFont, color: baseColor };
+            metaIdx++;
+            mctx.font = meta.font;
+            const w = mctx.measureText(g).width;
+            const ch = { ch: g, x: xCursor, w, smGx: 0, smGy: 0 };
+            chars.push(ch);
+            if (!curRun || curRun.font !== meta.font || curRun.color !== meta.color) {
+              curRun = { font: meta.font, color: meta.color, chars: [] };
+              runs.push(curRun);
+            }
+            curRun.chars.push(ch);
+            xCursor += w;
+            lineWidth = xCursor;
+          }
+
+          let startX = 0;
+          if (textAlign === 'center') startX = (containerWidth - lineWidth) / 2;
+          else if (textAlign === 'right' || textAlign === 'end') startX = containerWidth - lineWidth;
+          renderLines.push({ chars, runs, startX, y: (li + 0.78) * lh });
+        }
+
+        el.classList.add('wavy-hide');
+        textItems.push({
+          el, lh, renderLines,
+          totalH: renderLines.length * lh,
+          // doc-Y captured at build time; used for cheap viewport pre-cull
+          // without forcing a layout each frame.
+          docY: rect.top + window.scrollY,
+        });
+      }
+      lastRebuildAt = performance.now();
+    }
+
+    /* Idle-skip bookkeeping: the textCanvas content from the previous frame
+       remains correct unless ripples are non-trivial, scroll moved, or layout
+       was rebuilt. Skipping the redraw entirely is the single biggest CPU win. */
+    let lastRenderScrollY = -1;
+    let lastRenderScrollX = -1;
+    let lastRebuildAt = 0;
+    let _idleSkipFrames = 0;
+
+    function rippleHasEnergy() {
+      // Sparse sample of the ripple field to estimate whether anything is
+      // moving. Cheap (~100 reads) compared to a full redraw.
+      if (!curr) return false;
+      const N = curr.length;
+      const step = Math.max(1, (N / 200) | 0);
+      let energy = 0;
+      for (let i = 0; i < N; i += step) {
+        const v = curr[i];
+        energy += v < 0 ? -v : v;
+        if (energy > 0.04) return true;
+      }
+      return false;
+    }
+
+    /* Render: read all rects in one batch, then draw with ripple displacement. */
+    function renderText() {
+      const _t0 = performance.now();
+      if (!TW) { txtTimes[txtIdx] = performance.now() - _t0; txtIdx = (txtIdx + 1) % PROFILE_WINDOW; return; }
+      if (!curr || textItems.length === 0) {
+        tctx.clearRect(0, 0, TW, TH);
+        lastTxtState = 'empty';
+        txtTimes[txtIdx] = performance.now() - _t0; txtIdx = (txtIdx + 1) % PROFILE_WINDOW;
+        return;
+      }
+
+      const sx = window.scrollX;
+      const sy = window.scrollY;
+      const scrollMoved = sx !== lastRenderScrollX || sy !== lastRenderScrollY;
+      const recentRebuild = (performance.now() - lastRebuildAt) < 700;
+      const active = scrollMoved || recentRebuild || rippleHasEnergy();
+
+      if (!active) {
+        // Nothing to do: previous frame's pixels are still correct.
+        _idleSkipFrames++;
+        lastTxtState = 'idle';
+        txtTimes[txtIdx] = performance.now() - _t0; txtIdx = (txtIdx + 1) % PROFILE_WINDOW;
+        return;
+      }
+      _idleSkipFrames = 0;
+      lastRenderScrollX = sx;
+      lastRenderScrollY = sy;
+
+      tctx.clearRect(0, 0, TW, TH);
+      let _charsDrawn = 0;
+      let _visibleItems = 0;
+
+      // Batch DOM reads (single forced layout). Only for items potentially in
+      // viewport — visibility is checked cheaply via cached docY first.
+      const positions = new Array(textItems.length);
+      for (let i = 0; i < textItems.length; i++) {
+        const it = textItems[i];
+        // Cheap pre-cull using the doc-Y captured at last build.
+        if (it.docY !== undefined) {
+          const approxScreenY = it.docY - sy;
+          if (approxScreenY + it.totalH < -100 || approxScreenY > TH + 100) {
+            positions[i] = null;
+            continue;
+          }
+        }
+        const r = it.el.getBoundingClientRect();
+        positions[i] = { x: r.left, y: r.top };
+      }
+
+      const dispStr = 7;         // displacement strength: 50% of original
+      const rotStr  = 0.0275;    // rotation strength: halved again per request
+      const smooth  = 0.035;     // temporal low-pass alpha — much slower / less jumpy
+
+      tctx.textBaseline = 'alphabetic';
+      let curFont = '';
+      let curColor = '';
+
+      for (let i = 0; i < textItems.length; i++) {
+        const item = textItems[i];
+        const pos = positions[i];
+        if (pos === null) continue;
+        if (pos.y + item.totalH < -40 || pos.y > TH + 40) continue;
+        _visibleItems++;
+
+        for (let li = 0; li < item.renderLines.length; li++) {
+          const line = item.renderLines[li];
+          const lineY = pos.y + line.y;
+          if (lineY < -item.lh || lineY > TH + item.lh) continue;
+          const lineX = pos.x + line.startX;
+
+          // Iterate per-(font,color) runs so canvas state is set ONCE per run
+          // instead of once per character.
+          for (let ri = 0; ri < line.runs.length; ri++) {
+            const run = line.runs[ri];
+            if (run.font !== curFont) { tctx.font = run.font; curFont = run.font; }
+            if (run.color !== curColor) { tctx.fillStyle = run.color; curColor = run.color; }
+            const runChars = run.chars;
+            for (let ci = 0; ci < runChars.length; ci++) {
+              _charsDrawn++;
+              const ch = runChars[ci];
+              const cx = lineX + ch.x + ch.w * 0.5;
+              const cy = lineY;
+
+              // Sample ripple gradient at character center with bilinear
+              // interpolation between grid cells.
+              let gradX = 0, gradY = 0;
+              const gxf = cx / SCALE;
+              const gyf = cy / SCALE;
+              const gx0 = gxf | 0;
+              const gy0 = gyf | 0;
+              if (gx0 > 0 && gx0 < rw - 2 && gy0 > 0 && gy0 < rh - 2) {
+                const fx = gxf - gx0;
+                const fy = gyf - gy0;
+                const gi00 = gy0 * rw + gx0;
+                const gi10 = gi00 + 1;
+                const gi01 = gi00 + rw;
+                const gi11 = gi01 + 1;
+                const gxA = (curr[gi00 + 1] - curr[gi00 - 1]) * (1 - fx) + (curr[gi10 + 1] - curr[gi10 - 1]) * fx;
+                const gxB = (curr[gi01 + 1] - curr[gi01 - 1]) * (1 - fx) + (curr[gi11 + 1] - curr[gi11 - 1]) * fx;
+                const gyA = (curr[gi00 + rw] - curr[gi00 - rw]) * (1 - fx) + (curr[gi10 + rw] - curr[gi10 - rw]) * fx;
+                const gyB = (curr[gi01 + rw] - curr[gi01 - rw]) * (1 - fx) + (curr[gi11 + rw] - curr[gi11 - rw]) * fx;
+                gradX = gxA * (1 - fy) + gxB * fy;
+                gradY = gyA * (1 - fy) + gyB * fy;
+              }
+
+              // Temporal low-pass per character — smooths out per-frame
+              // jaggedness and gives a gentler, slower response to ripples.
+              ch.smGx += (gradX - ch.smGx) * smooth;
+              ch.smGy += (gradY - ch.smGy) * smooth;
+
+              const ox = ch.smGx * dispStr;
+              const oy = ch.smGy * dispStr;
+              const mag = Math.hypot(ch.smGx, ch.smGy);
+              const angle = mag > 0.00005 ? Math.atan2(ch.smGy, ch.smGx) * Math.min(1, mag * 6) * rotStr : 0;
+
+              if (Math.abs(ox) < 0.25 && Math.abs(oy) < 0.25 && Math.abs(angle) < 0.0015) {
+                tctx.fillText(ch.ch, lineX + ch.x, lineY);
+              } else {
+                tctx.setTransform(TDPR, 0, 0, TDPR, (cx + ox) * TDPR, (cy + oy) * TDPR);
+                tctx.rotate(angle);
+                tctx.fillText(ch.ch, -ch.w * 0.5, 0);
+                tctx.setTransform(TDPR, 0, 0, TDPR, 0, 0);
+              }
+            }
+          }
+        }
+      }
+      lastCharsDrawn = _charsDrawn;
+      lastTxtVisibleItems = _visibleItems;
+      lastTxtState = _charsDrawn > 0 ? 'draw' : 'cull';
+      txtTimes[txtIdx] = performance.now() - _t0;
+      txtIdx = (txtIdx + 1) % PROFILE_WINDOW;
+    }
+
+    function textLoop() {
+      renderText();
+      requestAnimationFrame(textLoop);
+    }
+
+    /* Rebuild on layout-changing events. */
+    let rebuildTimer = null;
+    function scheduleRebuild(delay = 60) {
+      if (rebuildTimer) clearTimeout(rebuildTimer);
+      rebuildTimer = setTimeout(() => { rebuildTimer = null; buildTextItems(); }, delay);
+    }
+
+    window.addEventListener('resize', () => {
+      resizeTextCanvas();
+      scheduleRebuild(80);
+    });
+
+    /* Hook page navigation: rebuild after the page swap settles. */
+    const origDoPageSwitch = doPageSwitch;
+    window.doPageSwitch = function(pageId) {
+      origDoPageSwitch(pageId);
+      scheduleRebuild(60);
+      // Also rebuild after reveal animations conclude.
+      setTimeout(() => buildTextItems(), 1100);
+    };
+    // Re-wire showPage to use the wrapped version.
+    const _origShowPage = showPage;
+    showPage = function(pageId) {
+      // existing showPage already calls doPageSwitch internally; hook via observer instead.
+      _origShowPage(pageId);
+      scheduleRebuild(800);
+      setTimeout(() => buildTextItems(), 1500);
+    };
+
+    /* Rebuild when section-content reveal transitions complete. */
+    document.addEventListener('transitionend', e => {
+      if (e.target.matches && e.target.matches('[data-reveal], .section-content')) {
+        scheduleRebuild(20);
+      }
+    });
+
+    /* Initial build after fonts are ready. */
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => {
+        setTimeout(() => {
+          buildTextItems();
+          requestAnimationFrame(textLoop);
+        }, 80);
+      });
+    } else {
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          buildTextItems();
+          requestAnimationFrame(textLoop);
+        }, 200);
+      });
+    }
   </script>
 </body>
 </html>
