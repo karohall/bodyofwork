@@ -308,17 +308,17 @@
     .artists-carousel.dragging * { user-select: none; pointer-events: none; }
     .artists-track {
       display: flex;
-      gap: 32px;
+      gap: clamp(80px, 9vw, 160px);
       width: max-content;
       align-items: flex-start;
     }
     .artist-card {
-      width: clamp(220px, 22vw, 300px);
+      width: clamp(200px, 18vw, 280px);
       flex-shrink: 0;
     }
     .artist-thumb {
       width: 100%;
-      aspect-ratio: 4/5;
+      aspect-ratio: 1/1;
       background: rgba(0,0,0,0.025);
       position: relative;
       overflow: hidden;
@@ -589,13 +589,13 @@
       'Gabriel Widing',
     ];
     const BIO_LOREM = [
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed sensoria tactilia per cutem fluunt et corpus in cogitationem.',
-      'Praesens absentia formam induit. Materia respirat, superficies recordatur. Tactus fit medium et corpus fit tela.',
-      'Ubi haptica intuitioni occurrit. Operis limina dissolvuntur — codex qui tactum sentit, sensum qui se ipsum legit.',
-      'Quasi vibrationes silentes, opera in cute permanent diutius quam in memoria. Lorem ipsum dolor sit amet sensoria.',
-      'Per sensores et actuatores, gestus minimus fit signum. Audientia non spectat — audientia est medium ipsum.',
-      'Fragmenta corporis, fragmenta attentionis. Lorem ipsum tactilis, vibratio quae sensum praecedit verbum.',
-      'Performantia post-visualis. Quae fiunt non videntur sed sentiuntur — opera quae solum in tuo corpore exsistunt.',
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed sensoria tactilia per cutem fluunt et corpus in cogitationem labitur, ubi materia et memoria sese invicem tangunt.<br><br>Opera in limine residet inter quod sentitur et quod cogitatur. Vibrationes minimae, gestus tacitus, attentio quae a pelle incipit et per nervos ad conscientiam adscendit.<br><br>Praxis eius quaerit non spectatorem sed participem — corpus quod recipit, recordatur, respondet.',
+      'Praesens absentia formam induit. Materia respirat, superficies recordatur. Tactus fit medium et corpus fit tela super quam opera scribuntur per pulsus tenues et calorem subtilem.<br><br>Quaerit limites inter sensum et significationem, inter affectum et conceptum. Quod non videtur saepe altius penetrat quam quod oculis aperitur.<br><br>Ars eius post-visualis est, sed non anti-visualis — visus simpliciter cedit aliis viis cognoscendi.',
+      'Ubi haptica intuitioni occurrit, opera limina dissolvunt. Codex qui tactum sentit, sensus qui se ipsum legit, materia quae auditorem in materiam convertit.<br><br>Per annos investigavit relationes inter superficiem et profunditatem, inter momentum et durationem. Singulae opera est experimentum in conscientia incarnata.',
+      'Quasi vibrationes silentes, opera in cute permanent diutius quam in memoria. Lorem ipsum dolor sit amet sensoria, et tactus fit lingua quae verbis caret sed sensu plena est.<br><br>Practica eius coniungit technologiam sensorialem cum traditione choreographica antiqua. Inter actuatores et impulsus, inter codicem et carnem, quaerit locum ubi machina humanitatem non substituit sed amplificat.<br><br>Audientia in opere participat per gestus minimos, respirationes communes, attentiones quae se invicem informant.',
+      'Per sensores et actuatores, gestus minimus fit signum. Audientia non spectat — audientia est medium ipsum, et opera per corpora multa simul fluit ut undae per aquam.<br><br>Quaerit formas in quibus singularitas et collectivum se invicem non excludunt sed nutriunt. Tactus communis non est tactus diluitus sed tactus multiplicatus.',
+      'Fragmenta corporis, fragmenta attentionis. Lorem ipsum tactilis, vibratio quae sensum praecedit verbum, calor qui memoriam praecedit imaginem.<br><br>Operatur in margine inter installationem et performantiam, inter objectum et eventum. Materia eius est tempus ipsum prout per corpus fluit.<br><br>Quaestio fundamentalis eius semper eadem manet: quid significat habere corpus, et quid significat corpus aliud cognoscere?',
+      'Performantia post-visualis. Quae fiunt non videntur sed sentiuntur — opera quae solum in tuo corpore exsistunt, et quae cum corpore tuo discedunt.<br><br>Investigationes eius extendunt traditiones somaticas in territoria nova ubi technologia non interrumpit sed sustinet praesentiam. Quaerit quomodo machina possit fieri instrumentum attentionis potius quam distractionis.<br><br>Singula opera est invitatio ad modum essendi alterum — non transcendentem sed immanentem, non visionarium sed tactilem.',
     ];
     const wireframeSVG = (seed) => {
       // a few simple, minimal wireframe variations
