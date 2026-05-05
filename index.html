@@ -791,11 +791,30 @@
       }
     }
 
+    /* Auto-complete: when the user stops scrolling between two pages the
+       crossfade would otherwise sit at a dim mid-state (both pages partially
+       faded). After a short idle, smooth-scroll to the nearest page so the
+       transition always resolves cleanly. */
+    let scrollIdleTimer = null;
+    const SCROLL_IDLE_MS = 160;
+    const SNAP_EPSILON = 0.01;
+    function snapToNearestPage() {
+      const progress = getProgress();
+      const target = Math.round(progress);
+      if (Math.abs(progress - target) <= SNAP_EPSILON) return;
+      window.scrollTo({
+        top: target * window.innerHeight * VH_PER_STEP,
+        behavior: 'smooth'
+      });
+    }
+
     window.addEventListener('scroll', () => {
       const sy = window.scrollY;
       scrollVelocity += Math.abs(sy - currentScrollY);
       currentScrollY = sy;
       updateCrossfade();
+      clearTimeout(scrollIdleTimer);
+      scrollIdleTimer = setTimeout(snapToNearestPage, SCROLL_IDLE_MS);
     }, { passive: true });
 
     updateCrossfade();
