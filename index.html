@@ -1580,6 +1580,10 @@ void main() {
     ].join(',');
 
     let textItems = [];
+    /* Items whose element is part of the current text selection. We skip
+       drawing these on the canvas and remove `.wavy-hide` so the user can
+       see what they're selecting. */
+    let selectedItems = new Set();
     const measureCanvas = document.createElement('canvas');
     const mctx = measureCanvas.getContext('2d');
 
@@ -1598,6 +1602,8 @@ void main() {
       // eslint-disable-next-line no-unused-expressions
       document.body.offsetHeight;
       textItems = [];
+      // Stale references — repopulated via updateSelection() at the end.
+      selectedItems = new Set();
 
       const elements = Array.from(document.querySelectorAll(WAVY_SELECTOR));
       const elemSet = new Set(elements);
@@ -1699,7 +1705,45 @@ void main() {
       }
       lastRebuildAt = performance.now();
       document.body.classList.remove('wavy-rebuilding');
+      updateSelection();
     }
+
+    /* Reveal HTML text and skip canvas drawing for elements that are part
+       of the active text selection — otherwise the user is selecting
+       transparent text under a canvas and can't see what they're copying. */
+    function updateSelection() {
+      const sel = window.getSelection();
+      const empty = !sel || sel.isCollapsed || sel.rangeCount === 0;
+
+      const next = new Set();
+      if (!empty) {
+        for (const it of textItems) {
+          for (let r = 0; r < sel.rangeCount; r++) {
+            if (sel.getRangeAt(r).intersectsNode(it.el)) {
+              next.add(it);
+              break;
+            }
+          }
+        }
+      }
+
+      for (const it of selectedItems) {
+        if (!next.has(it)) it.el.classList.add('wavy-hide');
+      }
+      let changed = false;
+      for (const it of selectedItems) if (!next.has(it)) { changed = true; break; }
+      if (!changed) for (const it of next) if (!selectedItems.has(it)) { changed = true; break; }
+      for (const it of next) {
+        if (!selectedItems.has(it)) it.el.classList.remove('wavy-hide');
+      }
+      selectedItems = next;
+      // Force the next renderText frame to clear+redraw so stale canvas
+      // glyphs of newly-selected items don't linger during idle frames.
+      if (changed) selectionDirty = true;
+    }
+    let selectionDirty = false;
+
+    document.addEventListener('selectionchange', updateSelection);
 
     let lastRenderScrollY = -1;
     let lastRenderScrollX = -1;
@@ -1745,7 +1789,8 @@ void main() {
       const sy = window.scrollY;
       const scrollMoved = sx !== lastRenderScrollX || sy !== lastRenderScrollY;
       const recentRebuild = (performance.now() - lastRebuildAt) < 700;
-      const active = scrollMoved || recentRebuild || rippleHasEnergy() || fadeActive();
+      const active = scrollMoved || recentRebuild || rippleHasEnergy() || fadeActive() || selectionDirty;
+      selectionDirty = false;
 
       if (!active) {
         _idleSkipFrames++;
@@ -1805,6 +1850,7 @@ void main() {
         const item = textItems[i];
         const pos = positions[i];
         if (pos === null) continue;
+        if (selectedItems.has(item)) continue;
         if (pos.y + item.totalH < -40 || pos.y > TH + 40) continue;
         _visibleItems++;
 
