@@ -324,10 +324,14 @@
       overflow: hidden;
       color: rgba(0,0,0,0.18);
     }
-    .artist-thumb svg {
+    .artist-thumb svg,
+    .artist-thumb img {
       width: 100%;
       height: 100%;
       display: block;
+    }
+    .artist-thumb img {
+      object-fit: cover;
     }
     .artist-name {
       margin-top: 18px;
@@ -584,23 +588,52 @@
     /* ─────────────────────────────────────────
        Artist carousel — populate cards
        ───────────────────────────────────────── */
+    /* Bios are pulled verbatim from each artist's own site or interview where
+       possible; only minor edits (capitalisation, light trimming) to fit the
+       card. Sources noted next to each entry. */
     const ARTISTS = [
-      'Olle Bjerkås',
-      'Lundahl & Seitl',
-      'Karolina Hall',
-      'Untold Garden',
-      'Eli Eli',
-      'Tim Bishop',
-      'Gabriel Widing',
-    ];
-    const BIO_LOREM = [
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed sensoria tactilia per cutem fluunt et corpus in cogitationem labitur, ubi materia et memoria sese invicem tangunt.<br><br>Opera in limine residet inter quod sentitur et quod cogitatur. Vibrationes minimae, gestus tacitus, attentio quae a pelle incipit et per nervos ad conscientiam adscendit.<br><br>Praxis eius quaerit non spectatorem sed participem — corpus quod recipit, recordatur, respondet.',
-      'Praesens absentia formam induit. Materia respirat, superficies recordatur. Tactus fit medium et corpus fit tela super quam opera scribuntur per pulsus tenues et calorem subtilem.<br><br>Quaerit limites inter sensum et significationem, inter affectum et conceptum. Quod non videtur saepe altius penetrat quam quod oculis aperitur.<br><br>Ars eius post-visualis est, sed non anti-visualis — visus simpliciter cedit aliis viis cognoscendi.',
-      'Ubi haptica intuitioni occurrit, opera limina dissolvunt. Codex qui tactum sentit, sensus qui se ipsum legit, materia quae auditorem in materiam convertit.<br><br>Per annos investigavit relationes inter superficiem et profunditatem, inter momentum et durationem. Singulae opera est experimentum in conscientia incarnata.',
-      'Quasi vibrationes silentes, opera in cute permanent diutius quam in memoria. Lorem ipsum dolor sit amet sensoria, et tactus fit lingua quae verbis caret sed sensu plena est.<br><br>Practica eius coniungit technologiam sensorialem cum traditione choreographica antiqua. Inter actuatores et impulsus, inter codicem et carnem, quaerit locum ubi machina humanitatem non substituit sed amplificat.<br><br>Audientia in opere participat per gestus minimos, respirationes communes, attentiones quae se invicem informant.',
-      'Per sensores et actuatores, gestus minimus fit signum. Audientia non spectat — audientia est medium ipsum, et opera per corpora multa simul fluit ut undae per aquam.<br><br>Quaerit formas in quibus singularitas et collectivum se invicem non excludunt sed nutriunt. Tactus communis non est tactus diluitus sed tactus multiplicatus.',
-      'Fragmenta corporis, fragmenta attentionis. Lorem ipsum tactilis, vibratio quae sensum praecedit verbum, calor qui memoriam praecedit imaginem.<br><br>Operatur in margine inter installationem et performantiam, inter objectum et eventum. Materia eius est tempus ipsum prout per corpus fluit.<br><br>Quaestio fundamentalis eius semper eadem manet: quid significat habere corpus, et quid significat corpus aliud cognoscere?',
-      'Performantia post-visualis. Quae fiunt non videntur sed sentiuntur — opera quae solum in tuo corpore exsistunt, et quae cum corpore tuo discedunt.<br><br>Investigationes eius extendunt traditiones somaticas in territoria nova ubi technologia non interrumpit sed sustinet praesentiam. Quaerit quomodo machina possit fieri instrumentum attentionis potius quam distractionis.<br><br>Singula opera est invitatio ad modum essendi alterum — non transcendentem sed immanentem, non visionarium sed tactilem.',
+      {
+        name: 'Olle Bjerkås',
+        image: 'images/artists/olle-bjerkas.jpg',
+        // ollebjerkas.se / olle-bjerks.squarespace.com
+        bio: '"I am an artist, maker, organiser and facilitator based in Stockholm, Sweden. Since 2008 I have worked with a wide variety of projects and fields, ranging from founding participatory festivals to invention of geometrical building blocks."<br><br>His practice focuses on creating light sculptures and geometric construction kits for festivals, science centers, theatres, homes, public places and offices.',
+      },
+      {
+        name: 'Lundahl & Seitl',
+        image: 'images/artists/lundahl-seitl.jpg',
+        // cellprojects.org
+        bio: '"Strongly rooted in research and choreography, Lundahl & Seitl\'s work is a unique type of participatory performance often conceived in collaborations with other disciplines including: architects, cognitive neurologists, designers and musicians."<br><br>A partnership formed in 2003 by Christer Lundahl and Martina Seitl, working with sightless goggles, choreographed touch, spatial sound, and AR/VR.',
+      },
+      {
+        name: 'Karolina Hall',
+        image: null,
+        // karohall.com — site copy is sparse; longer bio TBD
+        bio: '"Bridging experiences between digital and physical space."<br><br>An embodied interaction designer and researcher based in Stockholm, exploring how physical movement translates into digital language. Her practice connects dance, performance and digital design — bringing artists together with engineers, museums with startups, analog with digital.',
+      },
+      {
+        name: 'Untold Garden',
+        image: 'images/artists/untold-garden.webp',
+        // untold.garden/about-us
+        bio: '"An art and design studio exploring how technology can catalyse interpersonal relationships and enable alternative human experiences."<br><br>"Their work spans physical installations, virtual sculptures, interactive performances, artificial natures, and experimental social networks — experience-driven systems that use cutting-edge machine learning technologies and scalable networking infrastructures to unearth new types of ecologies."',
+      },
+      {
+        name: 'Eli Eli',
+        image: 'images/artists/eli-eli.png',
+        // elieli.se
+        bio: '"Eli Eli is a choreographer and multidisciplinary artist navigating through a field of entanglement, connection and un-rootedness. Their main focus lies in sharing a practice of listening to the world, of collecting collective knowledge and expanding the art-field beyond the capitalist desires of production."<br><br>"Their work can be experienced through performances, workshops, writings, films and installations, and they often communicate a sense of tactility, of radical softness and care, of attentiveness as generosity."',
+      },
+      {
+        name: 'Tim Bishop',
+        image: 'images/artists/tim-bishop.jpg',
+        // timbishopartist.com / onetooneart.eu
+        bio: '"I am an artist and spatial sound designer originally from the UK and now based in Lund, Sweden. I am interested in the ways in which two individuals can connect with one another, both in a one-to-one encounter and within a group context."<br><br>"I make one-to-one performance, film and installation works, specifically focusing on immersive, multi-sensory and interactive methods, and often involving technology to enhance presence."',
+      },
+      {
+        name: 'Gabriel Widing',
+        image: 'images/artists/gabriel-widing.jpg',
+        // gwid.se / nyxxx.se
+        bio: '"I\'m an artist and game designer, interested in performance, play and participation. A lot of my work involves writing and directing for theatre."<br><br>He collaborates with the production collective Nyxxx — "an artist collective producing performance art where the audience experiences the works from within."',
+      },
     ];
     const wireframeSVG = (seed) => {
       // a few simple, minimal wireframe variations
@@ -651,13 +684,16 @@
       const track = document.getElementById('artistsTrack');
       const c = document.getElementById('artistsCarousel');
 
-      function makeCard(name, i) {
+      function makeCard(artist, i) {
         const card = document.createElement('div');
         card.className = 'artist-card';
+        const thumb = artist.image
+          ? `<img src="${artist.image}" alt="" loading="lazy" draggable="false">`
+          : wireframeSVG(i);
         card.innerHTML = `
-          <div class="artist-thumb">${wireframeSVG(i)}</div>
-          <div class="artist-name">${name}</div>
-          <div class="artist-bio">${BIO_LOREM[i % BIO_LOREM.length]}</div>
+          <div class="artist-thumb">${thumb}</div>
+          <div class="artist-name">${artist.name}</div>
+          <div class="artist-bio">${artist.bio}</div>
         `;
         return card;
       }
@@ -665,7 +701,7 @@
       const COPIES = 3;
       const frag = document.createDocumentFragment();
       for (let copy = 0; copy < COPIES; copy++) {
-        ARTISTS.forEach((name, i) => frag.appendChild(makeCard(name, i)));
+        ARTISTS.forEach((artist, i) => frag.appendChild(makeCard(artist, i)));
       }
       track.appendChild(frag);
 
