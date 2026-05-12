@@ -346,6 +346,20 @@
       color: var(--muted);
       line-height: 1.55;
     }
+    .artist-work-title {
+      margin-top: 20px;
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--fg);
+    }
+    .artist-work-desc {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
 
     /* Page 4 — Schedule */
     .page-schedule .page-content { max-width: 780px; }
@@ -380,80 +394,6 @@
       line-height: 1.5;
       color: var(--fg);
       font-weight: 400;
-    }
-
-    /* Artists & Works — regular scrolling section below crossfade */
-    .works-section {
-      position: relative;
-      z-index: 3;
-      background: var(--bg);
-      margin-top: 900vh;
-      padding: 96px 48px 120px;
-    }
-    .works-section h2 {
-      font-family: var(--font-sans);
-      font-weight: 400;
-      font-size: clamp(28px, 3.4vw, 48px);
-      letter-spacing: -0.015em;
-      text-align: center;
-      margin-bottom: 64px;
-    }
-    .works-entry {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 48px 0;
-      border-top: 1px solid var(--rule);
-    }
-    .works-entry:last-child { border-bottom: 1px solid var(--rule); }
-    .works-artist-name {
-      font-family: var(--font-sans);
-      font-style: italic;
-      font-weight: 400;
-      font-size: clamp(22px, 2.2vw, 30px);
-      margin-bottom: 14px;
-      color: var(--fg);
-    }
-    .works-artist-bio {
-      font-family: var(--font-sans);
-      font-size: clamp(14px, 1.05vw, 16px);
-      line-height: 1.65;
-      color: var(--muted);
-      margin-bottom: 32px;
-    }
-    .works-divider {
-      border: none;
-      border-top: 1px solid var(--rule);
-      margin: 32px 0;
-    }
-    .works-title {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 12px;
-    }
-    .works-desc {
-      font-family: var(--font-sans);
-      font-size: clamp(14px, 1.05vw, 16px);
-      line-height: 1.65;
-      color: var(--fg);
-    }
-    .works-images {
-      margin-top: 28px;
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .works-images img {
-      width: 100%;
-      max-width: 340px;
-      display: block;
-      object-fit: cover;
-    }
-    @media (max-width: 768px) {
-      .works-section { padding: 80px 22px 80px; }
-      .works-images img { max-width: 100%; }
     }
 
     /* Page 5 — Quote */
@@ -504,8 +444,6 @@
            data-en="Artists" data-se="Konstnärer">Artists</a>
         <a href="#3" data-hover data-target="3"
            data-en="Schedule" data-se="Program">Schedule</a>
-        <a href="#works" data-hover data-works-link
-           data-en="Works" data-se="Verk">Works</a>
       </div>
       <div class="lang-toggle">
         <button data-hover data-lang="en" class="active">EN</button>
@@ -633,11 +571,6 @@
     </section>
 
   </div>
-
-  <section id="works" class="works-section">
-    <h2 data-en="Participating artists and artworks" data-se="Medverkande konstnärer och verk">Participating artists and artworks</h2>
-    <div id="worksList"></div>
-  </section>
 
   <script type="module">
     import { prepareWithSegments, layoutWithLines } from 'https://esm.sh/@chenglou/pretext@0.0.6';
@@ -784,10 +717,15 @@
         const thumb = artist.image
           ? `<img src="${artist.image}" alt="" loading="lazy" draggable="false">`
           : wireframeSVG(i);
+        const workHtml = artist.work
+          ? `<div class="artist-work-title">${artist.work}</div>
+             <div class="artist-work-desc">${artist.workDesc || ''}</div>`
+          : '';
         card.innerHTML = `
           <div class="artist-thumb">${thumb}</div>
           <div class="artist-name">${artist.name}</div>
           <div class="artist-bio">${artist.bio}</div>
+          ${workHtml}
         `;
         return card;
       }
@@ -868,37 +806,6 @@
       }, { passive: false });
     })();
 
-    /* ─────────────────────────────────────────
-       Artists & Works list
-       ───────────────────────────────────────── */
-    (function buildWorksList() {
-      const list = document.getElementById('worksList');
-      if (!list) return;
-      ARTISTS.forEach(artist => {
-        const entry = document.createElement('div');
-        entry.className = 'works-entry';
-
-        const images = [artist.artistImage, artist.workImage].filter(Boolean);
-        const imagesHtml = images.length
-          ? `<div class="works-images">${images.map(src => `<img src="${src}" alt="">`).join('')}</div>`
-          : '';
-
-        entry.innerHTML = `
-          <div class="works-artist-name">${artist.name}</div>
-          <div class="works-artist-bio">${artist.bio}</div>
-          <hr class="works-divider">
-          <div class="works-title">${artist.work || 'Work title'}</div>
-          <div class="works-desc">${artist.workDesc || ''}</div>
-          ${imagesHtml}`;
-        list.appendChild(entry);
-      });
-    })();
-
-    /* Works nav link → scroll to section */
-    document.querySelector('[data-works-link]')?.addEventListener('click', e => {
-      e.preventDefault();
-      document.getElementById('works')?.scrollIntoView({ behavior: 'smooth' });
-    });
 
     /* ─────────────────────────────────────────
        Scroll-driven crossfade (no Y movement)
