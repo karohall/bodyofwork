@@ -310,11 +310,13 @@
       display: flex;
       gap: clamp(80px, 9vw, 160px);
       width: max-content;
-      align-items: flex-start;
+      align-items: stretch;
     }
     .artist-card {
       width: clamp(200px, 18vw, 280px);
       flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
     }
     .artist-thumb {
       width: 100%;
@@ -345,9 +347,12 @@
       font-size: 13px;
       color: var(--muted);
       line-height: 1.55;
+      flex: 1;
     }
     .artist-work-title {
       margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--rule);
       font-family: var(--font-sans);
       font-style: italic;
       font-size: 15px;
