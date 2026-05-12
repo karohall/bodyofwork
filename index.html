@@ -36,7 +36,7 @@
       /* Total scroll = (N-1) × VH_PER_STEP × 100vh + 100vh.
          5 pages × 2vh/step + 1vh viewport = 9vh of body height.
          Longer scroll lets the crossfade breathe instead of snapping. */
-      min-height: 900vh;
+      min-height: 1100vh;
     }
 
     /* ── Background canvases (fixed full-viewport) ── */
@@ -382,7 +382,78 @@
       font-weight: 400;
     }
 
-    /* Page 5 — Quote */
+    /* Page 5 — Artists & Works */
+    .page-works {
+      align-items: stretch;
+      padding: 0;
+    }
+    .works-wrap {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 96px 48px 48px;
+      overflow: hidden;
+    }
+    .works-header {
+      text-align: center;
+      flex-shrink: 0;
+      margin-bottom: 36px;
+    }
+    .works-header h2 {
+      font-family: var(--font-sans);
+      font-weight: 400;
+      font-size: clamp(28px, 3.4vw, 48px);
+      letter-spacing: -0.015em;
+    }
+    .works-list {
+      overflow-y: auto;
+      flex: 1;
+      scrollbar-width: thin;
+      scrollbar-color: #d0d0d0 transparent;
+    }
+    .works-entry {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px 60px;
+      padding: 28px 0;
+      border-top: 1px solid var(--rule);
+    }
+    .works-entry:last-child { border-bottom: 1px solid var(--rule); }
+    .works-artist-name {
+      font-family: var(--font-sans);
+      font-style: italic;
+      font-size: 17px;
+      font-weight: 400;
+      margin-bottom: 10px;
+      color: var(--fg);
+    }
+    .works-artist-bio {
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      line-height: 1.62;
+      color: var(--muted);
+    }
+    .works-title {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .works-desc {
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      line-height: 1.62;
+      color: var(--fg);
+    }
+    @media (max-width: 768px) {
+      .works-wrap { padding: 90px 22px 40px; }
+      .works-entry { grid-template-columns: 1fr; gap: 16px; }
+    }
+
+    /* Page 6 — Quote */
     .quote {
       font-family: var(--font-sans);
       font-style: italic;
@@ -430,6 +501,8 @@
            data-en="Artists" data-se="Konstnärer">Artists</a>
         <a href="#3" data-hover data-target="3"
            data-en="Schedule" data-se="Program">Schedule</a>
+        <a href="#4" data-hover data-target="4"
+           data-en="Works" data-se="Verk">Works</a>
       </div>
       <div class="lang-toggle">
         <button data-hover data-lang="en" class="active">EN</button>
@@ -544,8 +617,18 @@
       </div>
     </section>
 
-    <!-- Page 5 — Quote -->
-    <section class="page" data-page="4">
+    <!-- Page 5 — Artists & Works -->
+    <section class="page page-works" data-page="4">
+      <div class="works-wrap">
+        <div class="works-header">
+          <h2 data-en="Participating artists and artworks" data-se="Medverkande konstnärer och verk">Participating artists and artworks</h2>
+        </div>
+        <div class="works-list" id="worksList"></div>
+      </div>
+    </section>
+
+    <!-- Page 6 — Quote -->
+    <section class="page" data-page="5">
       <div class="page-content">
         <p class="quote"
            data-en="“The words printed here are concepts. You must go through the experiences.”"
@@ -594,41 +677,55 @@
     const ARTISTS = [
       {
         name: 'Olle Bjerkås',
+        work: 'Work title',
+        workDesc: 'Placeholder description of the work. This text will be replaced with the actual artwork description — approximately five to six lines long. The work engages with touch, presence, and material. Visitors encounter it through direct physical contact with the piece, which responds to their movements and weight. The experience unfolds differently for each person.',
         image: 'images/artists/olle-bjerkas.jpg',
         // ollebjerkas.se / olle-bjerks.squarespace.com
         bio: '"I am an artist, maker, organiser and facilitator based in Stockholm, Sweden. Since 2008 I have worked with a wide variety of projects and fields, ranging from founding participatory festivals to invention of geometrical building blocks."<br><br>His practice focuses on creating light sculptures and geometric construction kits for festivals, science centers, theatres, homes, public places and offices.',
       },
       {
         name: 'Lundahl & Seitl',
+        work: 'Work title',
+        workDesc: 'Placeholder description of the work. This text will be replaced with the actual artwork description — approximately five to six lines long. The work engages with touch, presence, and material. Visitors encounter it through direct physical contact with the piece, which responds to their movements and weight. The experience unfolds differently for each person.',
         image: 'images/artists/lundahl-seitl.jpg',
         // cellprojects.org
         bio: '"Strongly rooted in research and choreography, Lundahl & Seitl\'s work is a unique type of participatory performance often conceived in collaborations with other disciplines including: architects, cognitive neurologists, designers and musicians."<br><br>A partnership formed in 2003 by Christer Lundahl and Martina Seitl, working with sightless goggles, choreographed touch, spatial sound, and AR/VR.',
       },
       {
         name: 'Karo Hall',
+        work: 'Work title',
+        workDesc: 'Placeholder description of the work. This text will be replaced with the actual artwork description — approximately five to six lines long. The work engages with touch, presence, and material. Visitors encounter it through direct physical contact with the piece, which responds to their movements and weight. The experience unfolds differently for each person.',
         image: 'images/artists/karo-hall.jpg',
         bio: '"Bridging experiences between digital and physical space. Exploring sensory intelligence as an empirical method and the body as a site of knowledge."<br><br>"Karo Hall is an interdisciplinary artist and curator working across somatic art, performance, and extended reality. Co-initiator of Body of Work."',
       },
       {
         name: 'Untold Garden',
+        work: 'Work title',
+        workDesc: 'Placeholder description of the work. This text will be replaced with the actual artwork description — approximately five to six lines long. The work engages with touch, presence, and material. Visitors encounter it through direct physical contact with the piece, which responds to their movements and weight. The experience unfolds differently for each person.',
         image: 'images/artists/untold-garden.webp',
         // untold.garden/about-us
         bio: '"An art and design studio exploring how technology can catalyse interpersonal relationships and enable alternative human experiences."<br><br>"Their work spans physical installations, virtual sculptures, interactive performances, artificial natures, and experimental social networks — experience-driven systems that use cutting-edge machine learning technologies and scalable networking infrastructures to unearth new types of ecologies."',
       },
       {
         name: 'Eli Eli',
+        work: 'Work title',
+        workDesc: 'Placeholder description of the work. This text will be replaced with the actual artwork description — approximately five to six lines long. The work engages with touch, presence, and material. Visitors encounter it through direct physical contact with the piece, which responds to their movements and weight. The experience unfolds differently for each person.',
         image: 'images/artists/eli-eli.png',
         // elieli.se
         bio: '"Eli Eli is a choreographer and multidisciplinary artist navigating through a field of entanglement, connection and un-rootedness. Their main focus lies in sharing a practice of listening to the world, of collecting collective knowledge and expanding the art-field beyond the capitalist desires of production."<br><br>"Their work can be experienced through performances, workshops, writings, films and installations, and they often communicate a sense of tactility, of radical softness and care, of attentiveness as generosity."',
       },
       {
         name: 'Tim Bishop',
+        work: 'Work title',
+        workDesc: 'Placeholder description of the work. This text will be replaced with the actual artwork description — approximately five to six lines long. The work engages with touch, presence, and material. Visitors encounter it through direct physical contact with the piece, which responds to their movements and weight. The experience unfolds differently for each person.',
         image: 'images/artists/tim-bishop.jpg',
         // timbishopartist.com / onetooneart.eu
         bio: '"I am an artist and spatial sound designer originally from the UK and now based in Lund, Sweden. I am interested in the ways in which two individuals can connect with one another, both in a one-to-one encounter and within a group context."<br><br>"I make one-to-one performance, film and installation works, specifically focusing on immersive, multi-sensory and interactive methods, and often involving technology to enhance presence."',
       },
       {
         name: 'Gabriel Widing',
+        work: 'Work title',
+        workDesc: 'Placeholder description of the work. This text will be replaced with the actual artwork description — approximately five to six lines long. The work engages with touch, presence, and material. Visitors encounter it through direct physical contact with the piece, which responds to their movements and weight. The experience unfolds differently for each person.',
         image: 'images/artists/gabriel-widing.jpg',
         // gwid.se / nyxxx.se
         bio: '"I\'m an artist and game designer, interested in performance, play and participation. A lot of my work involves writing and directing for theatre."<br><br>He collaborates with the production collective Nyxxx — "an artist collective producing performance art where the audience experiences the works from within."',
@@ -771,6 +868,28 @@
           c.scrollLeft += e.deltaY;
         }
       }, { passive: false });
+    })();
+
+    /* ─────────────────────────────────────────
+       Artists & Works list
+       ───────────────────────────────────────── */
+    (function buildWorksList() {
+      const list = document.getElementById('worksList');
+      if (!list) return;
+      ARTISTS.forEach(artist => {
+        const entry = document.createElement('div');
+        entry.className = 'works-entry';
+        entry.innerHTML = `
+          <div class="works-artist">
+            <div class="works-artist-name">${artist.name}</div>
+            <div class="works-artist-bio">${artist.bio}</div>
+          </div>
+          <div class="works-work">
+            <div class="works-title">${artist.work || 'Work title'}</div>
+            <div class="works-desc">${artist.workDesc || ''}</div>
+          </div>`;
+        list.appendChild(entry);
+      });
     })();
 
     /* ─────────────────────────────────────────
