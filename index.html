@@ -36,7 +36,7 @@
       /* Total scroll = (N-1) × VH_PER_STEP × 100vh + 100vh.
          5 pages × 2vh/step + 1vh viewport = 9vh of body height.
          Longer scroll lets the crossfade breathe instead of snapping. */
-      min-height: 1100vh;
+      min-height: 900vh;
     }
 
     /* ── Background canvases (fixed full-viewport) ── */
@@ -382,57 +382,48 @@
       font-weight: 400;
     }
 
-    /* Page 5 — Artists & Works */
-    .page-works {
-      align-items: stretch;
-      padding: 0;
+    /* Artists & Works — regular scrolling section below crossfade */
+    .works-section {
+      position: relative;
+      z-index: 3;
+      background: var(--bg);
+      margin-top: 900vh;
+      padding: 96px 48px 120px;
     }
-    .works-wrap {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      padding: 96px 48px 48px;
-      overflow: hidden;
-    }
-    .works-header {
-      text-align: center;
-      flex-shrink: 0;
-      margin-bottom: 36px;
-    }
-    .works-header h2 {
+    .works-section h2 {
       font-family: var(--font-sans);
       font-weight: 400;
       font-size: clamp(28px, 3.4vw, 48px);
       letter-spacing: -0.015em;
-    }
-    .works-list {
-      overflow-y: auto;
-      flex: 1;
-      scrollbar-width: thin;
-      scrollbar-color: #d0d0d0 transparent;
+      text-align: center;
+      margin-bottom: 64px;
     }
     .works-entry {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 40px 60px;
-      padding: 28px 0;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 48px 0;
       border-top: 1px solid var(--rule);
     }
     .works-entry:last-child { border-bottom: 1px solid var(--rule); }
     .works-artist-name {
       font-family: var(--font-sans);
       font-style: italic;
-      font-size: 17px;
       font-weight: 400;
-      margin-bottom: 10px;
+      font-size: clamp(22px, 2.2vw, 30px);
+      margin-bottom: 14px;
       color: var(--fg);
     }
     .works-artist-bio {
       font-family: var(--font-sans);
-      font-size: 13.5px;
-      line-height: 1.62;
+      font-size: clamp(14px, 1.05vw, 16px);
+      line-height: 1.65;
       color: var(--muted);
+      margin-bottom: 32px;
+    }
+    .works-divider {
+      border: none;
+      border-top: 1px solid var(--rule);
+      margin: 32px 0;
     }
     .works-title {
       font-family: var(--font-mono);
@@ -440,20 +431,32 @@
       letter-spacing: 0.08em;
       text-transform: uppercase;
       color: var(--muted);
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
     .works-desc {
       font-family: var(--font-sans);
-      font-size: 13.5px;
-      line-height: 1.62;
+      font-size: clamp(14px, 1.05vw, 16px);
+      line-height: 1.65;
       color: var(--fg);
     }
+    .works-images {
+      margin-top: 28px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .works-images img {
+      width: 100%;
+      max-width: 340px;
+      display: block;
+      object-fit: cover;
+    }
     @media (max-width: 768px) {
-      .works-wrap { padding: 90px 22px 40px; }
-      .works-entry { grid-template-columns: 1fr; gap: 16px; }
+      .works-section { padding: 80px 22px 80px; }
+      .works-images img { max-width: 100%; }
     }
 
-    /* Page 6 — Quote */
+    /* Page 5 — Quote */
     .quote {
       font-family: var(--font-sans);
       font-style: italic;
@@ -501,7 +504,7 @@
            data-en="Artists" data-se="Konstnärer">Artists</a>
         <a href="#3" data-hover data-target="3"
            data-en="Schedule" data-se="Program">Schedule</a>
-        <a href="#4" data-hover data-target="4"
+        <a href="#works" data-hover data-works-link
            data-en="Works" data-se="Verk">Works</a>
       </div>
       <div class="lang-toggle">
@@ -617,18 +620,8 @@
       </div>
     </section>
 
-    <!-- Page 5 — Artists & Works -->
-    <section class="page page-works" data-page="4">
-      <div class="works-wrap">
-        <div class="works-header">
-          <h2 data-en="Participating artists and artworks" data-se="Medverkande konstnärer och verk">Participating artists and artworks</h2>
-        </div>
-        <div class="works-list" id="worksList"></div>
-      </div>
-    </section>
-
-    <!-- Page 6 — Quote -->
-    <section class="page" data-page="5">
+    <!-- Page 5 — Quote -->
+    <section class="page" data-page="4">
       <div class="page-content">
         <p class="quote"
            data-en="“The words printed here are concepts. You must go through the experiences.”"
@@ -640,6 +633,11 @@
     </section>
 
   </div>
+
+  <section id="works" class="works-section">
+    <h2 data-en="Participating artists and artworks" data-se="Medverkande konstnärer och verk">Participating artists and artworks</h2>
+    <div id="worksList"></div>
+  </section>
 
   <script type="module">
     import { prepareWithSegments, layoutWithLines } from 'https://esm.sh/@chenglou/pretext@0.0.6';
@@ -879,18 +877,28 @@
       ARTISTS.forEach(artist => {
         const entry = document.createElement('div');
         entry.className = 'works-entry';
+
+        const images = [artist.artistImage, artist.workImage].filter(Boolean);
+        const imagesHtml = images.length
+          ? `<div class="works-images">${images.map(src => `<img src="${src}" alt="">`).join('')}</div>`
+          : '';
+
         entry.innerHTML = `
-          <div class="works-artist">
-            <div class="works-artist-name">${artist.name}</div>
-            <div class="works-artist-bio">${artist.bio}</div>
-          </div>
-          <div class="works-work">
-            <div class="works-title">${artist.work || 'Work title'}</div>
-            <div class="works-desc">${artist.workDesc || ''}</div>
-          </div>`;
+          <div class="works-artist-name">${artist.name}</div>
+          <div class="works-artist-bio">${artist.bio}</div>
+          <hr class="works-divider">
+          <div class="works-title">${artist.work || 'Work title'}</div>
+          <div class="works-desc">${artist.workDesc || ''}</div>
+          ${imagesHtml}`;
         list.appendChild(entry);
       });
     })();
+
+    /* Works nav link → scroll to section */
+    document.querySelector('[data-works-link]')?.addEventListener('click', e => {
+      e.preventDefault();
+      document.getElementById('works')?.scrollIntoView({ behavior: 'smooth' });
+    });
 
     /* ─────────────────────────────────────────
        Scroll-driven crossfade (no Y movement)
