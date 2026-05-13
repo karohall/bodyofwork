@@ -313,26 +313,34 @@
       align-items: stretch;
     }
     .artist-card {
-      width: clamp(200px, 18vw, 280px);
       flex-shrink: 0;
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: clamp(16px, 2vw, 28px);
+    }
+    .artist-col,
+    .work-col {
+      width: clamp(180px, 16vw, 256px);
       display: flex;
       flex-direction: column;
     }
-    .artist-thumb {
+    .artist-thumb,
+    .artist-work-thumb {
       width: 100%;
       aspect-ratio: 1/1;
       background: rgba(0,0,0,0.025);
-      position: relative;
       overflow: hidden;
       color: rgba(0,0,0,0.18);
     }
-    .artist-thumb svg,
-    .artist-thumb img {
+    .artist-thumb svg, .artist-thumb img,
+    .artist-work-thumb svg, .artist-work-thumb img {
       width: 100%;
       height: 100%;
       display: block;
     }
-    .artist-thumb img { object-fit: cover; }
+    .artist-thumb img,
+    .artist-work-thumb img { object-fit: cover; }
     .artist-name {
       margin-top: 14px;
       font-size: 17px;
@@ -345,24 +353,7 @@
       font-size: 13px;
       color: var(--muted);
       line-height: 1.55;
-      flex: 1;
     }
-    .artist-work-thumb {
-      margin-top: 20px;
-      width: 100%;
-      aspect-ratio: 1/1;
-      background: rgba(0,0,0,0.025);
-      position: relative;
-      overflow: hidden;
-      color: rgba(0,0,0,0.18);
-    }
-    .artist-work-thumb svg,
-    .artist-work-thumb img {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-    .artist-work-thumb img { object-fit: cover; }
     .artist-work-title {
       margin-top: 14px;
       font-family: var(--font-sans);
@@ -758,18 +749,18 @@
           ? `<img src="${artist.workImage}" alt="" loading="lazy" draggable="false">`
           : wireframeSVG(i + 100);
 
-        const workHtml = artist.work ? `
-          <div class="artist-work-thumb">${workThumb}</div>
-          <div class="artist-work-title">${artist.work}</div>
-          <div class="artist-work-desc">${artist.workDesc || ''}</div>
-          ${artist.documentary ? '<div class="artist-work-documentary">Documentary screening</div>' : ''}
-        ` : '';
-
         card.innerHTML = `
-          <div class="artist-thumb">${artistThumb}</div>
-          <div class="artist-name">${artist.name}</div>
-          <div class="artist-bio">${artist.bio}</div>
-          ${workHtml}
+          <div class="artist-col">
+            <div class="artist-thumb">${artistThumb}</div>
+            <div class="artist-name">${artist.name}</div>
+            <div class="artist-bio">${artist.bio}</div>
+          </div>
+          <div class="work-col">
+            <div class="artist-work-thumb">${workThumb}</div>
+            <div class="artist-work-title">${artist.work || ''}</div>
+            <div class="artist-work-desc">${artist.workDesc || ''}</div>
+            ${artist.documentary ? '<div class="artist-work-documentary">Documentary screening</div>' : ''}
+          </div>
         `;
         return card;
       }
