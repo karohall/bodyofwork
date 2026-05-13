@@ -265,10 +265,16 @@
     }
     .venue-link {
       color: inherit;
+      text-decoration: underline;
+      text-decoration-color: rgba(0,0,0,0.25);
       text-underline-offset: 3px;
       cursor: none;
+      transition: text-decoration-color 0.3s ease, color 0.3s ease;
     }
-    .venue-link:hover { color: var(--fg); }
+    .venue-link:hover {
+      color: var(--fg);
+      text-decoration-color: var(--fg);
+    }
 
     /* Page 3 — Artists carousel */
     .page-artists {
