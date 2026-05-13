@@ -300,7 +300,7 @@
       overflow-y: hidden;
       cursor: grab;
       scrollbar-width: none;
-      padding: 8px 48px 48px;
+      padding: 0 48px;
       -webkit-overflow-scrolling: touch;
     }
     .artists-carousel::-webkit-scrollbar { display: none; }
@@ -308,71 +308,32 @@
     .artists-carousel.dragging * { user-select: none; pointer-events: none; }
     .artists-track {
       display: flex;
-      gap: clamp(80px, 9vw, 160px);
+      gap: 0;
       width: max-content;
-      align-items: stretch;
+      align-items: center;
     }
     .artist-card {
-      width: clamp(200px, 18vw, 280px);
       flex-shrink: 0;
       display: flex;
-      flex-direction: column;
-    }
-    .artist-thumb {
-      width: 100%;
-      aspect-ratio: 1/1;
-      background: rgba(0,0,0,0.025);
-      position: relative;
-      overflow: hidden;
-      color: rgba(0,0,0,0.18);
-    }
-    .artist-thumb svg,
-    .artist-thumb img {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-    .artist-thumb img {
-      object-fit: cover;
+      flex-direction: row;
+      align-items: baseline;
+      gap: clamp(10px, 1.4vw, 18px);
+      padding: 0 clamp(28px, 3.5vw, 52px);
+      border-right: 1px solid var(--rule);
     }
     .artist-name {
-      margin-top: 18px;
-      font-size: 17px;
+      font-size: clamp(15px, 1.3vw, 19px);
       font-style: italic;
-      font-weight: 400;
-      color: var(--fg);
-    }
-    .artist-bio {
-      margin-top: 8px;
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1.55;
-      flex: 1;
-    }
-    .artist-work-title {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid var(--rule);
-      font-family: var(--font-sans);
-      font-style: italic;
-      font-size: 15px;
       font-weight: 400;
       color: var(--fg);
       white-space: nowrap;
     }
-    .artist-work-desc {
-      margin-top: 6px;
-      font-size: 13px;
+    .artist-work-title {
+      font-size: clamp(15px, 1.3vw, 19px);
+      font-style: italic;
+      font-weight: 400;
       color: var(--muted);
-      line-height: 1.55;
-    }
-    .artist-work-documentary {
-      margin-top: 10px;
-      font-family: var(--font-mono);
-      font-size: 10px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--muted);
+      white-space: nowrap;
     }
 
     /* Page 4 — Schedule */
@@ -737,18 +698,11 @@
       function makeCard(artist, i) {
         const card = document.createElement('div');
         card.className = 'artist-card';
-        const thumb = artist.image
-          ? `<img src="${artist.image}" alt="" loading="lazy" draggable="false">`
-          : wireframeSVG(i);
         const workHtml = artist.work
-          ? `<div class="artist-work-title">${artist.work}</div>
-             <div class="artist-work-desc">${artist.workDesc || ''}</div>
-             ${artist.documentary ? '<div class="artist-work-documentary">Documentary screening</div>' : ''}`
+          ? `<span class="artist-work-title">${artist.work}</span>`
           : '';
         card.innerHTML = `
-          <div class="artist-thumb">${thumb}</div>
-          <div class="artist-name">${artist.name}</div>
-          <div class="artist-bio">${artist.bio}</div>
+          <span class="artist-name">${artist.name}</span>
           ${workHtml}
         `;
         return card;
