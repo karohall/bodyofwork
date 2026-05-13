@@ -264,17 +264,13 @@
       margin-top: 1.8em;
     }
     .venue-link {
-      color: inherit;
-      text-decoration: underline;
-      text-decoration-color: rgba(0,0,0,0.25);
-      text-underline-offset: 3px;
-      cursor: none;
-      transition: text-decoration-color 0.3s ease, color 0.3s ease;
-    }
-    .venue-link:hover {
       color: var(--fg);
-      text-decoration-color: var(--fg);
+      font-weight: 500;
+      text-decoration: none;
+      cursor: none;
+      transition: opacity 0.3s ease;
     }
+    .venue-link:hover { opacity: 0.6; }
 
     /* Page 3 — Artists carousel */
     .page-artists {
@@ -523,9 +519,9 @@
             The event takes place at <a href="https://helixartspace.se/" target="_blank" rel="noopener" class="venue-link">Helix Art Space</a>, June 2 – 5. All invited.
           </p>
           <p class="venue"
-             data-en="Event by Karo Hall and Jakob Skote."
-             data-se="Event av Karo Hall och Jakob Skote.">
-            Event by Karo Hall and Jakob Skote.
+             data-en='Event by <a href="https://www.karohall.com/" target="_blank" rel="noopener" class="venue-link">Karo Hall</a> and <a href="https://jakobskote.com/" target="_blank" rel="noopener" class="venue-link">Jakob Skote</a>.'
+             data-se='Event av <a href="https://www.karohall.com/" target="_blank" rel="noopener" class="venue-link">Karo Hall</a> och <a href="https://jakobskote.com/" target="_blank" rel="noopener" class="venue-link">Jakob Skote</a>.'>
+            Event by <a href="https://www.karohall.com/" target="_blank" rel="noopener" class="venue-link">Karo Hall</a> and <a href="https://jakobskote.com/" target="_blank" rel="noopener" class="venue-link">Jakob Skote</a>.
           </p>
         </div>
       </div>
