@@ -263,6 +263,12 @@
       color: var(--muted);
       margin-top: 1.8em;
     }
+    .venue-link {
+      color: inherit;
+      text-underline-offset: 3px;
+      cursor: none;
+    }
+    .venue-link:hover { color: var(--fg); }
 
     /* Page 3 — Artists carousel */
     .page-artists {
@@ -506,9 +512,9 @@
             This event is part workshop, part exhibition, part laboratory, bringing together artists in Sweden who are defining this field to discuss its challenges and contradictions. And most importantly, to get a feel for what it is.
           </p>
           <p class="venue"
-             data-en="The event takes place at Helix Art Space, June 2 – 5. All invited."
-             data-se="Eventet äger rum på Helix Art Space, 2 – 5 juni. Alla välkomna.">
-            The event takes place at Helix Art Space, June 2 – 5. All invited.
+             data-en='The event takes place at <a href="https://helixartspace.se/" target="_blank" rel="noopener" class="venue-link">Helix Art Space</a>, June 2 – 5. All invited.'
+             data-se='Eventet äger rum på <a href="https://helixartspace.se/" target="_blank" rel="noopener" class="venue-link">Helix Art Space</a>, 2 – 5 juni. Alla välkomna.'>
+            The event takes place at <a href="https://helixartspace.se/" target="_blank" rel="noopener" class="venue-link">Helix Art Space</a>, June 2 – 5. All invited.
           </p>
           <p class="venue"
              data-en="Event by Karo Hall and Jakob Skote."
