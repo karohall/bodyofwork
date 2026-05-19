@@ -832,17 +832,17 @@
         const card = document.createElement('div');
         card.className = 'artist-card';
 
-        const artistThumb = artist.image
-          ? `<img src="${artist.image}" alt="" loading="lazy" draggable="false">`
-          : wireframeSVG(i);
+        const artistThumbHtml = artist.image
+          ? `<div class="artist-thumb"><img src="${artist.image}" alt="" loading="lazy" draggable="false"></div>`
+          : '';
 
-        const workThumb = artist.workImage
-          ? `<img src="${artist.workImage}" alt="" loading="lazy" draggable="false">`
-          : wireframeSVG(i + 100);
+        const workThumbHtml = artist.workImage
+          ? `<div class="artist-work-thumb"><img src="${artist.workImage}" alt="" loading="lazy" draggable="false"></div>`
+          : '';
 
         const workCol = artist.work ? `
           <div class="work-col">
-            <div class="artist-work-thumb">${workThumb}</div>
+            ${workThumbHtml}
             <div class="artist-work-title">${artist.work}</div>
             ${artist.documentary ? '<div class="artist-work-documentary">Documentary screening</div>' : ''}
             <div class="artist-work-desc"${artist.workDescSe ? ` data-en="${artist.workDesc}" data-se="${artist.workDescSe}"` : ''}>${artist.workDesc || ''}</div>
@@ -850,7 +850,7 @@
 
         card.innerHTML = `
           <div class="artist-col">
-            <div class="artist-thumb">${artistThumb}</div>
+            ${artistThumbHtml}
             <div class="artist-name">${artist.name}</div>
             <div class="artist-bio">${artist.bio}</div>
           </div>
