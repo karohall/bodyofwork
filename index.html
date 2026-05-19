@@ -725,8 +725,9 @@
       },
       {
         name: 'Lundahl & Seitl',
-        work: 'Work title',
-        workDesc: 'Placeholder description of the work. This text will be replaced with the actual artwork description — approximately five to six lines long. The work engages with touch, presence, and material. Visitors encounter it through direct physical contact with the piece, which responds to their movements and weight. The experience unfolds differently for each person.',
+        work: 'A Missing Room',
+        workDesc: 'A Missing Room is an intimate work for two people, originating from Symphony of a Missing Room, a work shaped by over 50 international institutions, including Centre Pompidou Metz, Gropius Bau, and the Royal Academy of Arts. Symphony of a Missing Room is entirely dependent on physical museum space and visitors. In March 2020, the question arose whether the work could survive outside the cultural institution\'s framework. The answer turned inward, toward the rooms of the home, toward two bodies, toward the most intimate and simultaneously most endangered encounter.<br><br>In A Missing Room the app is the only light source and headphones make up the boundary between the shared and the private. The intention was to meet a state of exception. What emerged was that the state of exception did not end. The work explores what happens when we stop expecting to be seen. The pandemic made visible a condition that already existed: the systematic movement from I–Thou to I–It, from presence to distance.',
+        workDescSe: 'A Missing Room är ett intimt verk för två personer som tar sin utgångspunkt i Symphony of a Missing Room, ett verk format av över 50 internationella institutioner, däribland Centre Pompidou Metz, Gropius Bau och Royal Academy of Arts. Symphony of a Missing Room är helt beroende av fysiskt museirum och besökare. I mars 2020 ställdes frågan om verket kunde överleva utanför kulturinstitutionens ramar. Svaret vändes inåt, mot hemmets rum, mot två kroppar, mot det mest intima och samtidigt mest hotade mötet.<br><br>A Missing Room skapades för två personer i ett nedsläckt hem, med appen som enda ljuskälla och hörlurar som gräns mellan det delade och det egna. Tanken var att möta ett undantagstillstånd. Det som visade sig var att undantagstillståndet inte upphörde. Verket undersöker vad som händer när vi slutar förvänta oss att bli beskådade. Pandemin gjorde ett redan existerande tillstånd synligt: den systematiska rörelsen från Jag–Du till Jag–Det, från närvaro till distans.',
         image: 'images/artists/lundahl-seitl.webp',
         // cellprojects.org
         bio: '"Strongly rooted in research and choreography, Lundahl & Seitl\'s work is a unique type of participatory performance often conceived in collaborations with other disciplines including: architects, cognitive neurologists, designers and musicians."<br><br>A partnership formed in 2003 by Christer Lundahl and Martina Seitl, working with sightless goggles, choreographed touch, spatial sound, and AR/VR.',
@@ -844,7 +845,7 @@
             <div class="artist-work-thumb">${workThumb}</div>
             <div class="artist-work-title">${artist.work}</div>
             ${artist.documentary ? '<div class="artist-work-documentary">Documentary screening</div>' : ''}
-            <div class="artist-work-desc">${artist.workDesc || ''}</div>
+            <div class="artist-work-desc"${artist.workDescSe ? ` data-en="${artist.workDesc}" data-se="${artist.workDescSe}"` : ''}>${artist.workDesc || ''}</div>
           </div>` : '';
 
         card.innerHTML = `
