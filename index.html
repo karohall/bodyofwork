@@ -22,6 +22,9 @@
     html {
       scrollbar-width: thin;
       scrollbar-color: #d0d0d0 transparent;
+      /* Native scroll-snap: browser owns momentum + snap, so mobile touch
+         scrolling stays smooth and never lands at half-opacity. */
+      scroll-snap-type: y mandatory;
     }
 
     body {
@@ -33,11 +36,31 @@
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      /* Total scroll = (N-1) × VH_PER_STEP × 100vh + 100vh.
-         5 pages × 2vh/step + 1vh viewport = 9vh of body height.
-         Longer scroll lets the crossfade breathe instead of snapping. */
-      min-height: 900vh;
+      /* Expose the spacer-defined view timelines (defined further down on
+         sibling elements) to the .page descendants. Without this, the
+         animation-timeline lookup walks ancestors and never finds them. */
+      timeline-scope: --pg-0, --pg-1, --pg-2, --pg-3, --pg-4;
     }
+
+    /* One 100vh snap target per page, in normal flow. They drive the window
+       scroll height (5 × 100vh = 500vh) and provide the per-page named view
+       timelines that the .page opacity animations bind to below. */
+    #scrollSpacers {
+      position: relative;
+      width: 100%;
+      pointer-events: none;
+    }
+    #scrollSpacers > div {
+      height: 100vh;
+      scroll-snap-align: start;
+      scroll-snap-stop: normal;
+      view-timeline-axis: block;
+    }
+    #scrollSpacers > div:nth-child(1) { view-timeline-name: --pg-0; }
+    #scrollSpacers > div:nth-child(2) { view-timeline-name: --pg-1; }
+    #scrollSpacers > div:nth-child(3) { view-timeline-name: --pg-2; }
+    #scrollSpacers > div:nth-child(4) { view-timeline-name: --pg-3; }
+    #scrollSpacers > div:nth-child(5) { view-timeline-name: --pg-4; }
 
     /* ── Background canvases (fixed full-viewport) ── */
     #bgCanvas, #textCanvas {
@@ -213,6 +236,29 @@
     }
     .page.is-active { pointer-events: auto; }
 
+    /* Scroll-driven crossfade. Each page binds to its spacer's view timeline
+       and runs a 0 → 1 → 0 triangle as the spacer passes through the view.
+       Adjacent pages always sum to opacity 1 (no dim middle). Opacity rides
+       the compositor — no main-thread work, no JS smooth-scroll fight.
+       Browsers that don't support animation-timeline fall through this
+       @supports block and get the JS-driven opacity from updateCrossfade(). */
+    @keyframes page-triangle-fade {
+      0%   { opacity: 0; }
+      50%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    @supports (animation-timeline: view()) {
+      .page {
+        animation: page-triangle-fade linear both;
+        animation-range: cover 0% cover 100%;
+      }
+      .page[data-page="0"] { animation-timeline: --pg-0; }
+      .page[data-page="1"] { animation-timeline: --pg-1; }
+      .page[data-page="2"] { animation-timeline: --pg-2; }
+      .page[data-page="3"] { animation-timeline: --pg-3; }
+      .page[data-page="4"] { animation-timeline: --pg-4; }
+    }
+
     .page-content {
       max-width: 720px;
       width: 100%;
@@ -309,6 +355,10 @@
       scrollbar-width: none;
       padding: 8px 48px 48px;
       -webkit-overflow-scrolling: touch;
+      /* Claim horizontal pans; bubble vertical pans up to the page scroller.
+         Without this, iOS axis-locks the touch to horizontal once a finger
+         moves sideways and vertical scrolling past the carousel is broken. */
+      touch-action: pan-x;
     }
     .artists-carousel::-webkit-scrollbar { display: none; }
     .artists-carousel.dragging { cursor: grabbing; }
@@ -500,6 +550,17 @@
       </div>
     </div>
   </nav>
+
+  <!-- Invisible 100vh snap targets, one per page. Drive the scroll height
+       and provide the per-page named view-timelines (--pg-0…--pg-4) that
+       the .page opacity animations bind to. -->
+  <div id="scrollSpacers" aria-hidden="true">
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+  </div>
 
   <div class="pages" id="pages">
 
@@ -877,45 +938,40 @@
 
 
     /* ─────────────────────────────────────────
-       Scroll-driven crossfade (no Y movement)
-       Body is 500vh tall; each unit of viewport-
-       height progress fades one page out and
-       the next in.
+       Scroll-driven crossfade
+       Native scroll-snap (CSS) owns the scroll.
+       Page DOM opacity is driven by per-spacer
+       view-timelines in CSS when the browser
+       supports them (Chromium 115+, Safari 26+).
+       JS still: tracks active page for nav
+       highlight, computes alpha for canvas text,
+       and falls back to setting page opacity
+       directly when scroll-driven CSS isn't
+       supported (Firefox today, older Safari).
        ───────────────────────────────────────── */
     const pages = Array.from(document.querySelectorAll('.page'));
     const navLinks = Array.from(document.querySelectorAll('[data-target]'));
     const N_PAGES = pages.length;
 
+    const HAS_SCROLL_TIMELINE = (typeof CSS !== 'undefined') &&
+      CSS.supports && CSS.supports('animation-timeline: view()');
+
     let currentScrollY = 0;
     let scrollVelocity = 0;
     let activePageIdx = 0;
 
-    /* Page-turn crossfade.
-       VH_PER_STEP = how many viewport-heights of scrolling = one full page step.
-       The fade is linear and sums to 1 across adjacent pages so there is never
-       a dim mid-state where both pages are partially transparent at once.
-       Snap is direction-aware: any scroll past COMMIT_THRESHOLD from the last
-       committed page commits to the next page in that direction. Smaller
-       motions snap back. This gives a scroll-tied feel on the way out but a
-       clean resolution on arrival. */
-    const VH_PER_STEP = 2;
-    const COMMIT_THRESHOLD = 0.18;
+    const VH_PER_STEP = 1;
     const pageOpacities = new Array(N_PAGES).fill(0);
     pageOpacities[0] = 1;
 
-    /* Sequential (non-overlapping) fade with a settle plateau near each page.
-       Outgoing fully transparent by the half-way mark; incoming fully opaque
-       by FADE_PLATEAU of the way in. The plateau matters because the smooth
-       scroll snap eases out toward the target — without it, the last bit of
-       fade-in coincides with the slowest part of the snap, which reads as a
-       tremble before the new page resolves. */
-    const FADE_PLATEAU = 0.15;
-    const FADE_BAND = 0.5 - FADE_PLATEAU;
+    /* Linear triangle: opacity = max(0, 1 - |delta|). At any scroll position
+       the two adjacent pages sum to 1 exactly, so the screen is never blank
+       mid-transition. This matches the CSS keyframes page-triangle-fade,
+       which a spacer's view-timeline traces as the spacer passes through
+       the viewport (cover 0% → 50% → 100% maps to opacity 0 → 1 → 0). */
     function pageOpacityForDelta(d) {
       const ad = d < 0 ? -d : d;
-      if (ad >= 0.5) return 0;
-      if (ad <= FADE_PLATEAU) return 1;
-      return 1 - (ad - FADE_PLATEAU) / FADE_BAND;
+      return ad >= 1 ? 0 : 1 - ad;
     }
     function getProgress() {
       const vh = window.innerHeight || 1;
@@ -930,7 +986,7 @@
         const delta = progress - i;
         const op = pageOpacityForDelta(delta);
         pageOpacities[i] = op;
-        pages[i].style.opacity = op.toFixed(3);
+        if (!HAS_SCROLL_TIMELINE) pages[i].style.opacity = op.toFixed(3);
         const d = delta < 0 ? -delta : delta;
         if (d < bestDist) { bestDist = d; bestIdx = i; }
       }
@@ -947,51 +1003,23 @@
       }
     }
 
-    /* Auto-commit: any scroll past COMMIT_THRESHOLD from the last committed
-       page snaps forward (or back) to the next page. Larger scrolls jump
-       further (Math.round). Without this, scroll could rest mid-transition. */
-    let committedPage = Math.round(getProgress());
-    let scrollIdleTimer = null;
-    const SCROLL_IDLE_MS = 110;
-    const SNAP_EPSILON = 0.005;
-    function snapToCommittedPage() {
-      const progress = getProgress();
-      const delta = progress - committedPage;
-      let target;
-      if (Math.abs(delta) < COMMIT_THRESHOLD) {
-        target = committedPage;
-      } else if (delta > 0) {
-        target = Math.max(committedPage + 1, Math.round(progress));
-      } else {
-        target = Math.min(committedPage - 1, Math.round(progress));
-      }
-      target = Math.max(0, Math.min(N_PAGES - 1, target));
-      committedPage = target;
-      if (Math.abs(progress - target) <= SNAP_EPSILON) return;
-      window.scrollTo({
-        top: target * window.innerHeight * VH_PER_STEP,
-        behavior: 'smooth'
-      });
-    }
-
     window.addEventListener('scroll', () => {
       const sy = window.scrollY;
       scrollVelocity += Math.abs(sy - currentScrollY);
       currentScrollY = sy;
       updateCrossfade();
-      clearTimeout(scrollIdleTimer);
-      scrollIdleTimer = setTimeout(snapToCommittedPage, SCROLL_IDLE_MS);
     }, { passive: true });
 
     updateCrossfade();
 
-    /* Nav clicks → smooth scroll to target page */
+    /* Nav clicks → smooth-scroll to the target snap point. Native CSS snap
+       still owns the final lock-in, so this just kicks the browser toward
+       the right snap point and the snap engine resolves it cleanly. */
     navLinks.forEach(a => {
       a.addEventListener('click', e => {
         e.preventDefault();
         const t = parseInt(a.dataset.target, 10);
         if (Number.isNaN(t)) return;
-        committedPage = t;
         window.scrollTo({ top: t * window.innerHeight * VH_PER_STEP, behavior: 'smooth' });
       });
     });
