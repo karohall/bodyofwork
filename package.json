@@ -1,0 +1,15 @@
+{
+  "name": "bodyofwork-capture",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Record + replay tooling to render the live site to PNG/MP4 for social.",
+  "scripts": {
+    "serve": "npx --yes http-server . -p 5173 -c-1 -s",
+    "record": "node tools/record.mjs",
+    "capture": "node tools/capture.mjs"
+  },
+  "dependencies": {
+    "puppeteer": "^24.43.1"
+  }
+}

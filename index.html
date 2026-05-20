@@ -523,6 +523,49 @@
       .schedule-item { grid-template-columns: 1fr; gap: 6px; padding: 18px 0; }
       .artists-header, .artists-carousel { padding-left: 22px; padding-right: 22px; }
     }
+
+    /* ── Capture mode (?capture=1) ──
+       Strips the page to bare phrases for social-clip recording. Nav, title,
+       carousel, schedule, quote and credits all hidden. The page-1 subtitle
+       and the three main page-2 paragraphs are split into sentences and
+       re-rendered into a #captureStage as .capture-phrase elements stacked
+       at viewport center; JS cycles their canvas-text alpha one sentence
+       at a time (fade-in / 4s hold / fade-out). Mouse moves drive the
+       bg ripple. Defaults assume 1080×1920 portrait (Instagram Reel). */
+    body.capture-mode { overflow: hidden; }
+    body.capture-mode nav,
+    body.capture-mode #scrollSpacers,
+    body.capture-mode #profileHud,
+    body.capture-mode .cursor,
+    body.capture-mode .pages,
+    body.capture-mode .hero-sub,
+    body.capture-mode .about-text {
+      display: none !important;
+    }
+    body.capture-mode .capture-phrase {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      /* Width (not padding) controls the text area: the wavy text renderer
+         uses getBoundingClientRect().width to wrap text and the element's
+         rect.left to position glyphs, so CSS padding would just sit inside
+         the rect and the canvas glyphs would render across it.
+         Pure vw units (no clamp) keep layout identical at 540×960 record and
+         1080×1920 capture-with-DPR-2 — the same logical CSS pixels in both,
+         just rendered to twice the physical pixels in the final MP4. */
+      width: 70vw;
+      max-width: none;
+      padding: 0;
+      margin: 0;
+      text-align: center;
+      font-family: var(--font-sans);
+      font-style: normal;
+      font-weight: 400;
+      font-size: 5.2vw;
+      line-height: 1.4;
+      color: var(--fg);
+    }
   </style>
 </head>
 <body>
@@ -683,6 +726,51 @@
 
   <script type="module">
     import { prepareWithSegments, layoutWithLines } from 'https://esm.sh/@chenglou/pretext@0.0.6';
+
+    /* ─────────────────────────────────────────
+       Capture mode (?capture=1)
+       Strips the page to a sequence of phrases
+       cycling on the canvas. The cycle is gated
+       on the first mousemove so record and
+       virtual-clock replay stay in sync.
+       ───────────────────────────────────────── */
+    const CAPTURE_MODE = new URLSearchParams(location.search).has('capture');
+    const captureAlphaByEl = new Map();
+    if (CAPTURE_MODE) {
+      document.body.classList.add('capture-mode');
+      document.documentElement.style.scrollSnapType = 'none';
+      document.documentElement.style.overflow = 'hidden';
+      buildCapturePhrases();
+    }
+
+    /* Split each source paragraph into sentences and create one .capture-phrase
+       element per sentence, all stacked at viewport center via CSS. Runs once
+       at script load (before buildTextItems) so the wavy text builder picks
+       up the per-sentence elements. */
+    function buildCapturePhrases() {
+      const sourceSelectors = [
+        '.hero-sub',
+        '.about-text > p.lead',
+        '.about-text > p:nth-of-type(2)',
+        '.about-text > p:nth-of-type(3)',
+      ];
+      const stage = document.createElement('div');
+      stage.id = 'captureStage';
+      const split = (text) =>
+        (text.match(/[^.!?]+[.!?]+(?=\s|$)|[^.!?]+$/g) || [])
+          .map((s) => s.trim()).filter(Boolean);
+      for (const sel of sourceSelectors) {
+        const el = document.querySelector(sel);
+        if (!el) continue;
+        for (const sentence of split(el.textContent.trim())) {
+          const p = document.createElement('p');
+          p.className = 'capture-phrase';
+          p.textContent = sentence;
+          stage.appendChild(p);
+        }
+      }
+      document.body.appendChild(stage);
+    }
 
     /* ─────────────────────────────────────────
        Custom cursor
@@ -1004,13 +1092,14 @@
     }
 
     window.addEventListener('scroll', () => {
+      if (CAPTURE_MODE) return;
       const sy = window.scrollY;
       scrollVelocity += Math.abs(sy - currentScrollY);
       currentScrollY = sy;
       updateCrossfade();
     }, { passive: true });
 
-    updateCrossfade();
+    if (!CAPTURE_MODE) updateCrossfade();
 
     /* Nav clicks → smooth-scroll to the target snap point. Native CSS snap
        still owns the final lock-in, so this just kicks the browser toward
@@ -1431,12 +1520,21 @@ void main() {
     const SCALE = 3;
     let rw, rh;
     let curr, prev;
+    // Three pre-allocated grid buffers we rotate between prev/curr/next. The
+    // previous code allocated a fresh Float32Array(rw*rh) every stepRipple()
+    // — at 540×960 viewport that's ~230 KB/frame ≈ 14 MB/s of garbage. V8's
+    // major-GC then stalled the main thread every few seconds, which read as
+    // the random ~500ms slowdown.
+    let ripBufs;
+    let prevIdx = 0, currIdx = 1;
 
     function initRipple() {
       rw = Math.ceil(W / SCALE);
       rh = Math.ceil(H / SCALE);
-      curr = new Float32Array(rw * rh);
-      prev = new Float32Array(rw * rh);
+      ripBufs = [new Float32Array(rw * rh), new Float32Array(rw * rh), new Float32Array(rw * rh)];
+      prevIdx = 0; currIdx = 1;
+      prev = ripBufs[prevIdx];
+      curr = ripBufs[currIdx];
     }
 
     function dropRipple(cx, cy, radius, strength) {
@@ -1459,7 +1557,12 @@ void main() {
     const DAMPING = 0.982;
 
     function stepRipple() {
-      const next = new Float32Array(rw * rh);
+      const nextIdx = 3 - prevIdx - currIdx;  // [0,1,2] minus the two in use
+      const next = ripBufs[nextIdx];
+      // Borders aren't written by the loop; zero them so any energy a drop
+      // deposited on a border doesn't linger across the rotation. fill(0)
+      // touches the whole buffer (interior gets overwritten below anyway).
+      next.fill(0);
       for (let y = 1; y < rh - 1; y++) {
         for (let x = 1; x < rw - 1; x++) {
           const i = y * rw + x;
@@ -1471,8 +1574,10 @@ void main() {
           next[i] = (neighbors / 3.0 - prev[i]) * DAMPING;
         }
       }
-      prev = curr;
-      curr = next;
+      prevIdx = currIdx;
+      currIdx = nextIdx;
+      prev = ripBufs[prevIdx];
+      curr = ripBufs[currIdx];
     }
 
     /* ── Mouse tracking ── */
@@ -1766,7 +1871,8 @@ void main() {
       '.quote', '.quote-attr',
       '.nav-logo',
       '.nav-links a',
-      '.lang-toggle button', '.lang-toggle .sep'
+      '.lang-toggle button', '.lang-toggle .sep',
+      '.capture-phrase',
     ].join(',');
 
     let textItems = [];
@@ -2002,14 +2108,19 @@ void main() {
 
       for (let i = 0; i < textItems.length; i++) {
         const it = textItems[i];
-        // Find which .page (if any) this item belongs to, and read its
-        // crossfade opacity. Items not in any page (nav) are always full.
-        const pageEl = it.el.closest('.page');
+        // In capture mode, alpha is driven entirely by the phrase cycle —
+        // items not currently fading get 0 and are culled below. In normal
+        // mode it comes from the parent .page's scroll-driven crossfade.
         let pageOpacity = 1;
-        if (pageEl) {
-          const pi = pages.indexOf(pageEl);
-          if (pi >= 0) {
-            pageOpacity = pageOpacityForDelta(progress - pi);
+        if (CAPTURE_MODE) {
+          pageOpacity = captureAlphaByEl.get(it.el) ?? 0;
+        } else {
+          const pageEl = it.el.closest('.page');
+          if (pageEl) {
+            const pi = pages.indexOf(pageEl);
+            if (pi >= 0) {
+              pageOpacity = pageOpacityForDelta(progress - pi);
+            }
           }
         }
         opacities[i] = pageOpacity;
@@ -2027,8 +2138,8 @@ void main() {
         positions[i] = { x: r.left, y: r.top };
       }
 
-      const dispStr = 7;
-      const rotStr  = 0.0275;
+      const dispStr = CAPTURE_MODE ? 14 : 7;
+      const rotStr  = CAPTURE_MODE ? 0.055 : 0.0275;
       const smooth  = 0.035;
 
       tctx.textBaseline = 'alphabetic';
@@ -2140,6 +2251,7 @@ void main() {
         setTimeout(() => {
           buildTextItems();
           requestAnimationFrame(textLoop);
+          if (CAPTURE_MODE) startCaptureCycle();
         }, 80);
       });
     } else {
@@ -2147,8 +2259,68 @@ void main() {
         setTimeout(() => {
           buildTextItems();
           requestAnimationFrame(textLoop);
+          if (CAPTURE_MODE) startCaptureCycle();
         }, 200);
       });
+    }
+
+    /* ─────────────────────────────────────────
+       Capture cycle
+       Each phrase: fade in (FADE_MS) → hold (HOLD_MS) → fade out (FADE_MS).
+       Cycle plays once, then a blank TAIL_MS buffer before signalling stop.
+       On entry it triggers the recorder (window.__bowAutoStart, defined by
+       recorder.js when running under `npm run record --capture`) so the
+       recording's t=0 aligns with the cycle's first frame; once the cycle
+       and tail are done it calls window.__bowAutoStop which stops + saves.
+       Both hooks are no-ops in headless capture replay (recorder.js isn't
+       injected there), so the cycle just plays through against the virtual
+       clock and lets capture.mjs's frameCount bound the render.
+       ───────────────────────────────────────── */
+    function startCaptureCycle() {
+      const phraseEls = Array.from(document.querySelectorAll('.capture-phrase'));
+      if (phraseEls.length === 0) return;
+
+      const HOLD_MS = 4000;
+      const FADE_MS = 500;
+      const PERIOD_MS = HOLD_MS + 2 * FADE_MS;
+      const TOTAL_MS = phraseEls.length * PERIOD_MS;
+      const TAIL_MS = 5000;
+
+      for (const el of phraseEls) captureAlphaByEl.set(el, 0);
+
+      const cycleStart = performance.now();
+      if (typeof window.__bowAutoStart === 'function') {
+        try { window.__bowAutoStart(); } catch {}
+      }
+
+      let stopSignalled = false;
+      function frame(t) {
+        const elapsed = t - cycleStart;
+        if (elapsed >= TOTAL_MS + TAIL_MS) {
+          if (!stopSignalled) {
+            stopSignalled = true;
+            if (typeof window.__bowAutoStop === 'function') {
+              try { window.__bowAutoStop(); } catch {}
+            }
+          }
+          for (const el of phraseEls) captureAlphaByEl.set(el, 0);
+          requestAnimationFrame(frame);
+          return;
+        }
+        for (let i = 0; i < phraseEls.length; i++) {
+          const localT = elapsed - i * PERIOD_MS;
+          let a = 0;
+          if (localT >= 0 && localT < PERIOD_MS) {
+            if (localT < FADE_MS) a = localT / FADE_MS;
+            else if (localT < FADE_MS + HOLD_MS) a = 1;
+            else a = 1 - (localT - FADE_MS - HOLD_MS) / FADE_MS;
+            a = a * a * (3 - 2 * a);
+          }
+          captureAlphaByEl.set(phraseEls[i], a);
+        }
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
     }
   </script>
 </body>
