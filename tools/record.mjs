@@ -81,10 +81,28 @@ async function main() {
   });
 
   await page.evaluateOnNewDocument(recorderJs);
+
+  // Optional ghost: replay an older recording during this session so the
+  // user can dance with their past self. The page's startCaptureCycle
+  // triggers __bowStartGhost at the same instant it kicks the recorder,
+  // so both timelines start at t=0 together. Ghost mousemoves are
+  // dispatched as real DOM events and get captured by recorder.js too —
+  // the saved file ends up containing the merged path, so the final MP4
+  // shows both dancers with no extra flag needed at capture time.
+  let ghostInfo = '';
+  if (args.ghost) {
+    const ghostPath = path.resolve(ROOT, args.ghost);
+    const ghostJson = JSON.parse(await fs.readFile(ghostPath, 'utf8'));
+    const ghostJs = await fs.readFile(path.join(__dirname, 'ghost.js'), 'utf8');
+    const injected = `window.__bowGhostSamples = ${JSON.stringify(ghostJson.samples)};\n${ghostJs}`;
+    await page.evaluateOnNewDocument(injected);
+    ghostInfo = `, ghost from ${path.relative(ROOT, ghostPath)} (${ghostJson.samples.length} samples)`;
+  }
+
   const target = args.capture ? `${server.url}?capture=1` : server.url;
   await page.goto(target, { waitUntil: 'networkidle2' });
 
-  console.log(`▸ recorder loaded${args.capture ? ` (capture mode, ${args.width}×${args.height} — replay at DPR 2 for 1080×1920 output)` : ''}. Hotkeys: R=record, S=stop, D=save. Close the window to exit.`);
+  console.log(`▸ recorder loaded${args.capture ? ` (capture mode, ${args.width}×${args.height} — replay at DPR 2 for 1080×1920 output)` : ''}${ghostInfo}. Hotkeys: R=record, S=stop, D=save. Close the window to exit.`);
 
   await new Promise((resolve) => browser.on('disconnected', resolve));
   await server.close();

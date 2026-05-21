@@ -108,6 +108,22 @@
     #profileHud .lbl { color: #8a96b0; }
     #profileHud .hot { color: #ffb38a; }
 
+    /* TEMP — top FPS counter for diagnosing visual-speed perception */
+    #fpsCounter {
+      position: fixed;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 99999;
+      background: rgba(18, 20, 26, 0.85);
+      color: #d6e2ff;
+      font: 12px/1.2 ui-monospace, "SF Mono", Menlo, monospace;
+      padding: 5px 10px;
+      border-radius: 5px;
+      pointer-events: none;
+      letter-spacing: 0.04em;
+    }
+
     .cursor {
       position: fixed;
       width: 14px;
@@ -582,6 +598,7 @@
   <canvas id="bgCanvas"></canvas>
   <canvas id="textCanvas"></canvas>
   <div id="profileHud"></div>
+  <div id="fpsCounter">— fps</div>
   <div class="cursor" id="cursor"></div>
 
   <nav id="nav">
@@ -816,6 +833,33 @@
       });
     }
     bindHovers();
+
+    /* TEMP — independent rAF loop measuring actual frame cadence. Lives on
+       its own rAF so it reflects the browser's real refresh rate, not the
+       work the main animation loop is doing. Tracks min/cur/max over a
+       rolling 1-second window so brief throttling shows up immediately. */
+    (function fpsLoop() {
+      const el = document.getElementById('fpsCounter');
+      const samples = [];
+      let lastT = performance.now();
+      function tick(t) {
+        const dt = t - lastT;
+        lastT = t;
+        samples.push(dt);
+        // Trim samples older than 1 second of accumulated time
+        let total = 0;
+        for (const s of samples) total += s;
+        while (total > 1000 && samples.length > 1) { total -= samples.shift(); }
+        let min = Infinity, max = 0;
+        for (const s of samples) { if (s < min) min = s; if (s > max) max = s; }
+        const cur = samples.length ? (1000 / (total / samples.length)) : 0;
+        const minF = max > 0 ? (1000 / max) : 0;  // min fps = longest frame
+        const maxF = min > 0 ? (1000 / min) : 0;  // max fps = shortest frame
+        el.textContent = `${cur.toFixed(0)} fps  (min ${minF.toFixed(0)} / max ${maxF.toFixed(0)})`;
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    })();
 
     /* ─────────────────────────────────────────
        Artist carousel — populate cards
@@ -1701,8 +1745,24 @@ void main() {
     resize();
     window.addEventListener('resize', resize);
 
+    // Cap the sim/render loops to 60Hz regardless of rAF rate. On 120Hz
+    // displays Chrome adaptively bumps rAF to 120 fps when there's input
+    // activity and back to 60 fps when idle — which made the wave equation
+    // (driven by rAF) run at 2x speed during mouse interaction, producing
+    // the "vinyl 33/45 speed switch" effect. SIM_DT is the minimum interval
+    // between actual frame processing; rAF callbacks that fire too early
+    // are skipped (early return + reschedule).
+    const SIM_DT = 1000 / 60 - 1;  // ~15.67ms; -1 absorbs jitter without over-firing
+    let nextFrameAt = 0;
+    let nextTextAt = 0;
+
     function frame() {
       const _now = performance.now();
+      if (_now < nextFrameAt) {
+        requestAnimationFrame(frame);
+        return;
+      }
+      nextFrameAt = _now + SIM_DT;
       intervals[intIdx] = _now - lastFrameAt;
       intIdx = (intIdx + 1) % PROFILE_WINDOW;
       lastFrameAt = _now;
@@ -2249,6 +2309,12 @@ void main() {
     }
 
     function textLoop() {
+      const now = performance.now();
+      if (now < nextTextAt) {
+        requestAnimationFrame(textLoop);
+        return;
+      }
+      nextTextAt = now + SIM_DT;
       renderText();
       requestAnimationFrame(textLoop);
     }
@@ -2315,6 +2381,13 @@ void main() {
       const cycleStart = performance.now();
       if (typeof window.__bowAutoStart === 'function') {
         try { window.__bowAutoStart(); } catch {}
+      }
+      // If record.mjs --ghost is set, play back the old recording's mouse
+      // path starting at the same cycleStart so it lines up with this run's
+      // t=0. The ghost moves dispatch as real mousemoves; recorder.js picks
+      // them up and saves them into the new recording too.
+      if (typeof window.__bowStartGhost === 'function') {
+        try { window.__bowStartGhost(cycleStart); } catch {}
       }
 
       let stopSignalled = false;
