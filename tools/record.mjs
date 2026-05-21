@@ -15,11 +15,14 @@ const ROOT = path.resolve(__dirname, '..');
 const RECORDINGS_DIR = path.join(ROOT, 'recordings');
 
 function parseArgs(argv) {
-  const args = { width: null, height: null, capture: false };
+  const args = { width: null, height: null, capture: false, format: 'portrait' };
   const tokens = argv.slice(2);
   for (let i = 0; i < tokens.length; i++) {
     const a = tokens[i];
     if (a === '--capture') { args.capture = true; continue; }
+    if (a === '--portrait')  { args.format = 'portrait';  continue; }
+    if (a === '--landscape') { args.format = 'landscape'; continue; }
+    if (a === '--square')    { args.format = 'square';    continue; }
     const m = a.match(/^--([^=]+)(?:=(.*))?$/);
     if (!m) continue;
     const key = m[1];
@@ -32,13 +35,25 @@ function parseArgs(argv) {
     }
     args[key] = isNaN(+val) ? val : +val;
   }
-  // Default landscape (1440×900) for normal recordings. For --capture, use a
-  // 540×960 portrait viewport so the OS window fits comfortably on a laptop
-  // screen; the headless replay (capture.mjs) renders at DPR 2 to upscale the
-  // output to 1080×1920 for the final Reel. Same CSS layout, twice the
-  // physical pixels — `clamp(44px, …)` text reads 88px in the final MP4.
-  if (args.width == null) args.width = args.capture ? 540 : 1440;
-  if (args.height == null) args.height = args.capture ? 960 : 900;
+  // Capture format → logical viewport. Capture.mjs renders headless at DPR 2,
+  // so the final MP4 is 2× the recording viewport in each dimension:
+  //   portrait  (default): 540×960  → 1080×1920 (Instagram Reel / Stories)
+  //   landscape:           960×540  → 1920×1080 (YouTube, Twitter, web)
+  //   square:              720×720  → 1440×1440 (Instagram feed)
+  // Recording at the desired aspect ratio is required — replaying a portrait
+  // recording at a different ratio would distort mouse positions.
+  const FORMATS = {
+    portrait:  { w: 540, h: 960 },
+    landscape: { w: 960, h: 540 },
+    square:    { w: 720, h: 720 },
+  };
+  const fmt = FORMATS[args.format];
+  if (!fmt) {
+    console.error(`Unknown --format=${args.format}. Use portrait | landscape | square.`);
+    process.exit(2);
+  }
+  if (args.width == null) args.width = args.capture ? fmt.w : 1440;
+  if (args.height == null) args.height = args.capture ? fmt.h : 900;
   return args;
 }
 
@@ -102,7 +117,8 @@ async function main() {
   const target = args.capture ? `${server.url}?capture=1` : server.url;
   await page.goto(target, { waitUntil: 'networkidle2' });
 
-  console.log(`▸ recorder loaded${args.capture ? ` (capture mode, ${args.width}×${args.height} — replay at DPR 2 for 1080×1920 output)` : ''}${ghostInfo}. Hotkeys: R=record, S=stop, D=save. Close the window to exit.`);
+  const outW = args.width * 2, outH = args.height * 2;
+  console.log(`▸ recorder loaded${args.capture ? ` (capture mode, ${args.format} ${args.width}×${args.height} — output at ${outW}×${outH})` : ''}${ghostInfo}. Hotkeys: R=record, S=stop, D=save. Close the window to exit.`);
 
   await new Promise((resolve) => browser.on('disconnected', resolve));
   await server.close();

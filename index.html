@@ -560,24 +560,21 @@
     }
     /* Slate = one cycle slot. Holds one or more .capture-phrase lines that
        share a fade. The slate owns the fixed positioning so multi-line slates
-       (e.g. venue + date) stack naturally inside it. Width 70vw → 15% gap
-       each side. */
+       (e.g. venue + date) stack naturally inside it. Sizing is vmin-based
+       so the text reads at a consistent visual size whether the recording is
+       portrait, square or landscape; only the empty space around the text
+       block changes with aspect. */
     body.capture-mode .capture-slate {
       position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 70vw;
+      width: 70vmin;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 0.3em;
     }
-    /* Pure vw units (no clamp) keep layout identical at 540×960 record and
-       1080×1920 capture-with-DPR-2 — same CSS pixels, just rendered to twice
-       the physical pixels in the final MP4. The wavy text renderer uses each
-       element's getBoundingClientRect for line layout, so CSS padding would
-       be ignored at the canvas level. Width is controlled by the slate. */
     body.capture-mode .capture-phrase {
       width: 100%;
       max-width: none;
@@ -587,7 +584,7 @@
       font-family: var(--font-sans);
       font-style: normal;
       font-weight: 400;
-      font-size: 5.2vw;
+      font-size: 5.2vmin;
       line-height: 1.4;
       color: var(--fg);
     }

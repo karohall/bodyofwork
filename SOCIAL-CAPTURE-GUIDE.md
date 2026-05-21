@@ -64,6 +64,18 @@ inside it. **The recording starts automatically.** Just move your mouse
 around inside that window for ~65 seconds — the sentences will fade in and
 out and the wavy ripple follows your cursor.
 
+**Picking an aspect ratio.** Default is portrait (Instagram Reels / Stories,
+9:16). Add a flag for the other shapes:
+
+| Command | Output size | Use for |
+| --- | --- | --- |
+| `npm run record -- --capture` | 1080×1920 | Instagram Reel / Story (default) |
+| `npm run record -- --capture --landscape` | 1920×1080 | YouTube, web, Twitter |
+| `npm run record -- --capture --square` | 1440×1440 | Instagram feed post |
+
+The aspect is baked into the recording — if you record portrait you can't
+re-render it as landscape later, you'd need to re-record.
+
 When the sentences finish, you'll see `saved → recordings/recording-…json`
 in the Terminal. Close the Chromium window.
 
