@@ -542,19 +542,28 @@
     body.capture-mode .about-text {
       display: none !important;
     }
-    body.capture-mode .capture-phrase {
+    /* Slate = one cycle slot. Holds one or more .capture-phrase lines that
+       share a fade. The slate owns the fixed positioning so multi-line slates
+       (e.g. venue + date) stack naturally inside it. Width 70vw → 15% gap
+       each side. */
+    body.capture-mode .capture-slate {
       position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      /* Width (not padding) controls the text area: the wavy text renderer
-         uses getBoundingClientRect().width to wrap text and the element's
-         rect.left to position glyphs, so CSS padding would just sit inside
-         the rect and the canvas glyphs would render across it.
-         Pure vw units (no clamp) keep layout identical at 540×960 record and
-         1080×1920 capture-with-DPR-2 — the same logical CSS pixels in both,
-         just rendered to twice the physical pixels in the final MP4. */
       width: 70vw;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3em;
+    }
+    /* Pure vw units (no clamp) keep layout identical at 540×960 record and
+       1080×1920 capture-with-DPR-2 — same CSS pixels, just rendered to twice
+       the physical pixels in the final MP4. The wavy text renderer uses each
+       element's getBoundingClientRect for line layout, so CSS padding would
+       be ignored at the canvas level. Width is controlled by the slate. */
+    body.capture-mode .capture-phrase {
+      width: 100%;
       max-width: none;
       padding: 0;
       margin: 0;
@@ -736,6 +745,29 @@
        ───────────────────────────────────────── */
     const CAPTURE_MODE = new URLSearchParams(location.search).has('capture');
     const captureAlphaByEl = new Map();
+
+    /* Reel-specific phrases. Decoupled from the live site copy (.hero-sub
+       and .about-text) so the reel can be edited without touching the
+       on-site text. Each entry is either a single string (one-line phrase)
+       or an array of strings (multi-line slate that shares one cycle slot
+       and one fade). Length of this array drives the cycle: each entry =
+       HOLD_MS + 2*FADE_MS = 5s. Keep around 12–13 entries to match the
+       existing 65s recording. */
+    const CAPTURE_PHRASES = [
+      'An event about art that turns your body into its material.',
+      'Haptics, sensors, and other technologies give artists new ways of working with touch.',
+      "When touch becomes the site of the artwork, it can't be documented.",
+      'It exists only in your body.',
+      'Touch is intimate and complex to work with.',
+      'There is little terminology, few shared references, and no defined frameworks.',
+      'How do we exhibit it?',
+      'How do we fund it?',
+      'What is our responsibility as artists when we work with the bodies of the audience?',
+      'This event is part workshop, part exhibition, part laboratory, bringing together artists in Sweden who are defining this field.',
+      'And most importantly, to get a feel for what it is.',
+      ['Helix Art Space', '2 June – 7 June'],
+    ];
+
     if (CAPTURE_MODE) {
       document.body.classList.add('capture-mode');
       document.documentElement.style.scrollSnapType = 'none';
@@ -743,31 +775,20 @@
       buildCapturePhrases();
     }
 
-    /* Split each source paragraph into sentences and create one .capture-phrase
-       element per sentence, all stacked at viewport center via CSS. Runs once
-       at script load (before buildTextItems) so the wavy text builder picks
-       up the per-sentence elements. */
     function buildCapturePhrases() {
-      const sourceSelectors = [
-        '.hero-sub',
-        '.about-text > p.lead',
-        '.about-text > p:nth-of-type(2)',
-        '.about-text > p:nth-of-type(3)',
-      ];
       const stage = document.createElement('div');
       stage.id = 'captureStage';
-      const split = (text) =>
-        (text.match(/[^.!?]+[.!?]+(?=\s|$)|[^.!?]+$/g) || [])
-          .map((s) => s.trim()).filter(Boolean);
-      for (const sel of sourceSelectors) {
-        const el = document.querySelector(sel);
-        if (!el) continue;
-        for (const sentence of split(el.textContent.trim())) {
+      for (const entry of CAPTURE_PHRASES) {
+        const slate = document.createElement('div');
+        slate.className = 'capture-slate';
+        const lines = Array.isArray(entry) ? entry : [entry];
+        for (const line of lines) {
           const p = document.createElement('p');
           p.className = 'capture-phrase';
-          p.textContent = sentence;
-          stage.appendChild(p);
+          p.textContent = line;
+          slate.appendChild(p);
         }
+        stage.appendChild(slate);
       }
       document.body.appendChild(stage);
     }
@@ -2277,16 +2298,19 @@ void main() {
        clock and lets capture.mjs's frameCount bound the render.
        ───────────────────────────────────────── */
     function startCaptureCycle() {
-      const phraseEls = Array.from(document.querySelectorAll('.capture-phrase'));
-      if (phraseEls.length === 0) return;
+      // One slate = one cycle slot. Each slate's child .capture-phrase
+      // elements share the slate's alpha so multi-line slates fade together.
+      const slates = Array.from(document.querySelectorAll('.capture-slate'));
+      const slatePhrases = slates.map((s) => Array.from(s.querySelectorAll('.capture-phrase')));
+      if (slates.length === 0) return;
 
       const HOLD_MS = 4000;
       const FADE_MS = 500;
       const PERIOD_MS = HOLD_MS + 2 * FADE_MS;
-      const TOTAL_MS = phraseEls.length * PERIOD_MS;
+      const TOTAL_MS = slates.length * PERIOD_MS;
       const TAIL_MS = 5000;
 
-      for (const el of phraseEls) captureAlphaByEl.set(el, 0);
+      for (const phrases of slatePhrases) for (const el of phrases) captureAlphaByEl.set(el, 0);
 
       const cycleStart = performance.now();
       if (typeof window.__bowAutoStart === 'function') {
@@ -2303,11 +2327,11 @@ void main() {
               try { window.__bowAutoStop(); } catch {}
             }
           }
-          for (const el of phraseEls) captureAlphaByEl.set(el, 0);
+          for (const phrases of slatePhrases) for (const el of phrases) captureAlphaByEl.set(el, 0);
           requestAnimationFrame(frame);
           return;
         }
-        for (let i = 0; i < phraseEls.length; i++) {
+        for (let i = 0; i < slates.length; i++) {
           const localT = elapsed - i * PERIOD_MS;
           let a = 0;
           if (localT >= 0 && localT < PERIOD_MS) {
@@ -2316,7 +2340,7 @@ void main() {
             else a = 1 - (localT - FADE_MS - HOLD_MS) / FADE_MS;
             a = a * a * (3 - 2 * a);
           }
-          captureAlphaByEl.set(phraseEls[i], a);
+          for (const el of slatePhrases[i]) captureAlphaByEl.set(el, a);
         }
         requestAnimationFrame(frame);
       }
