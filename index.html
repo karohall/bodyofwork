@@ -448,13 +448,40 @@
     .schedule-list { text-align: left; }
     .schedule-item {
       display: grid;
-      grid-template-columns: 220px 1fr;
+      grid-template-columns: 220px 1fr auto;
       gap: 28px;
       padding: 22px 0;
       border-top: 1px solid var(--rule);
       align-items: baseline;
     }
     .schedule-item:last-child { border-bottom: 1px solid var(--rule); }
+    .schedule-link {
+      justify-self: end;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      cursor: none;
+      white-space: nowrap;
+      transition: color 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+    }
+    .schedule-link .arrow {
+      display: inline-block;
+      transition: transform 0.3s ease;
+    }
+    .schedule-link:hover {
+      color: var(--fg);
+      border-color: var(--fg);
+    }
+    .schedule-link:hover .arrow { transform: translateX(2px); }
     .schedule-note {
       margin-top: -24px;
       margin-bottom: 36px;
@@ -520,7 +547,8 @@
       .nav-links { gap: 18px; }
       .nav-links a { font-size: 11px; }
       .page { padding: 90px 22px 60px; }
-      .schedule-item { grid-template-columns: 1fr; gap: 6px; padding: 18px 0; }
+      .schedule-item { grid-template-columns: 1fr; gap: 10px; padding: 18px 0; }
+      .schedule-link { justify-self: start; margin-top: 4px; }
       .artists-header, .artists-carousel { padding-left: 22px; padding-right: 22px; }
     }
   </style>
@@ -637,6 +665,7 @@
               <div class="schedule-what"
                    data-en="Vernissage and performance by Gabriel Widing"
                    data-se="Vernissage och performance av Gabriel Widing">Vernissage and performance by Gabriel Widing</div>
+              <a class="schedule-link" href="https://luma.com/g18hpzgn" target="_blank" rel="noopener" data-hover><span data-en="Event page" data-se="Eventsida">Event page</span><span class="arrow" aria-hidden="true">→</span></a>
             </div>
             <div class="schedule-item">
               <div class="schedule-when"
@@ -645,6 +674,7 @@
               <div class="schedule-what"
                    data-en="Seminar &amp; talk: “What is this art form?”"
                    data-se="Seminarium &amp; samtal: ”Vad är denna konstform?”">Seminar &amp; talk: “What is this art form?”</div>
+              <a class="schedule-link" href="https://luma.com/0tmu1wlc" target="_blank" rel="noopener" data-hover><span data-en="Event page" data-se="Eventsida">Event page</span><span class="arrow" aria-hidden="true">→</span></a>
             </div>
             <div class="schedule-item">
               <div class="schedule-when"
@@ -653,6 +683,7 @@
               <div class="schedule-what"
                    data-en="Breakfast talk: “How do we fund this art and how do we exhibit it?”"
                    data-se="Frukostsamtal: ”Hur finansierar vi den här konsten och hur ställer vi ut den?”">Breakfast talk: “How do we fund this art and how do we exhibit it?”</div>
+              <a class="schedule-link" href="https://luma.com/n601lz56" target="_blank" rel="noopener" data-hover><span data-en="Event page" data-se="Eventsida">Event page</span><span class="arrow" aria-hidden="true">→</span></a>
             </div>
             <div class="schedule-item">
               <div class="schedule-when"
@@ -661,6 +692,7 @@
               <div class="schedule-what"
                    data-en="Seminar &amp; talk: “Working with the audience’s bodies as material” + performance by Karo Hall"
                    data-se="Seminarium &amp; samtal: ”Att arbeta med publikens kroppar som material” + performance av Karo Hall">Seminar &amp; talk: “Working with the audience’s bodies as material” + performance by Karo Hall</div>
+              <a class="schedule-link" href="https://luma.com/kz6cvrwg" target="_blank" rel="noopener" data-hover><span data-en="Event page" data-se="Eventsida">Event page</span><span class="arrow" aria-hidden="true">→</span></a>
             </div>
           </div>
         </div>
